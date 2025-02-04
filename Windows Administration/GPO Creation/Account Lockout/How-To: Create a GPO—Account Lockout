@@ -1,0 +1,13 @@
+1. Open Server Manager, click Tools, then open Group Policy Management.
+2. Expand your domain and right-click Group Policy Objects > New.
+3. Name the GPO Account Lockout, then click OK.
+4. Right-click Account Lockout and select Edit to open the Group Policy Management Editor.
+5. Navigate to:
+Computer Configuration > Policies > Windows Settings > Security Settings > Account Policies > Account Lockout Policy
+6. Configure the following settings:
+-Account lockout threshold: Set to 10 invalid logon attempts
+-Account lockout duration: Set to 15 minutes
+-Reset account lockout counter after: Set to 15 minutes
+7. Click Apply, then OK for each setting.
+8. Close the Group Policy Management Editor.
+9. Back in Group Policy Management, link the Account Lockout GPO to the GC Computers OU.
