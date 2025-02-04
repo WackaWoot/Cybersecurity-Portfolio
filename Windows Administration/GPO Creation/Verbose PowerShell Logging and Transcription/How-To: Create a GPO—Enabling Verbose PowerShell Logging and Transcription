@@ -1,0 +1,19 @@
+1. Open Server Manager > Tools > Group Policy Management.
+2. Expand your domain, right-click Group Policy Objects, and select New.
+3. Name the GPO PowerShell Logging, then click OK.
+4. Right-click PowerShell Logging and select Edit.
+5. Navigate to:
+Computer Configuration > Policies > Administrative Templates > Windows Components > Windows PowerShell
+6. Enable the following four policies:
+-Turn on Module Logging
+  -Click Show, enter * (wildcard) for Module Name, then OK.
+-Turn on PowerShell Script Block Logging
+  -Check Log script block invocation start/stop events.
+-Turn on Script Execution
+  -Set Execution Policy to Allow all scripts.
+-Turn on PowerShell Transcription
+  -Leave Transcript output directory blank (defaults to user's ~\Documents).
+  -Check Include invocation headers.
+7. Click Apply > OK for each setting.
+8. Close the Group Policy Management Editor.
+9. Back in Group Policy Management, link the PowerShell Logging GPO to the GC Computers OU.
