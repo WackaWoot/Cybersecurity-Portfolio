@@ -1,0 +1,14 @@
+Steps:
+1. Open Server Manager on your Windows Server machine.
+2. Click Tools > Group Policy Management to launch the Group Policy Management Console (GPMC).
+3. In the left pane, expand your Forest > Domains > your domain name (e.g., "yourdomain.com").
+4. Right-click Group Policy Objects and select New.
+5. Name the new GPO No LLMNR, then click OK.
+6. Right-click the newly created No LLMNR GPO and select Edit to open the Group Policy Management Editor.
+7. In the left pane, navigate to:
+Computer Configuration > Policies > Administrative Templates > Network > DNS Client
+8. In the right pane, find and double-click Turn Off Multicast Name Resolution.
+9. Select Enabled, then click Apply > OK.
+10. Close the Group Policy Management Editor.
+11. Back in Group Policy Management, right-click your GC Computers OU and select Link an Existing GPO.
+12. Choose No LLMNR, then click OK.
