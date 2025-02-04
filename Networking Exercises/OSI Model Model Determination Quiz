@@ -1,0 +1,63 @@
+A networking cable was cut in the data center and now no traffic can go out.
+
+
+A code injection was submitted from an administrative website, and it's possible that an attacker can now see unauthorized directories from your Linux server.
+
+
+The MAC address of one of your network interface cards has been spoofed and is preventing some traffic from reaching its destination.
+
+
+Your encrypted web traffic is now using a weak encryption cipher, and the web traffic is now vulnerable to decryption.
+
+
+The destination IP address was modified and traffic is routed to an unauthorized location.
+
+
+A flood of TCP requests is causing performance issues.
+
+
+A SQL injection attack was detected by the SOC. This SQL injection may have deleted several database tables.
+
+
+A switch suddenly stopped working, and local machines aren't receiving any traffic.
+
+
+An ethernet cable was disconnected, and the machine connected isn't able to receive any external traffic.
+
+
+Traffic within the network is being directed from the switch to a suspicious device.
+
+
+_______________________________________________________________
+
+Here's the breakdown of the OSI Model Layer associated with each scenario:
+
+1. **A networking cable was cut in the data center and now no traffic can go out.**
+   - **Layer 1 (Physical Layer)**: This layer deals with the physical connection and transmission of raw data bits over a physical medium (in this case, a networking cable being cut).
+
+2. **A code injection was submitted from an administrative website, and it's possible that an attacker can now see unauthorized directories from your Linux server.**
+   - **Layer 7 (Application Layer)**: Code injections typically exploit vulnerabilities in applications or software (which operate at the application layer) to execute unauthorized commands or access unauthorized data.
+
+3. **The MAC address of one of your network interface cards has been spoofed and is preventing some traffic from reaching its destination.**
+   - **Layer 2 (Data Link Layer)**: MAC addresses are associated with the data link layer, which handles the addressing of devices at the local network level.
+
+4. **Your encrypted web traffic is now using a weak encryption cipher, and the web traffic is now vulnerable to decryption.**
+   - **Layer 6 (Presentation Layer)**: The presentation layer deals with data encryption and decryption, and the use of weak encryption ciphers would compromise the confidentiality of the data.
+
+5. **The destination IP address was modified and traffic is routed to an unauthorized location.**
+   - **Layer 3 (Network Layer)**: IP addresses are handled at the network layer, which is responsible for routing and forwarding data packets based on IP addresses.
+
+6. **A flood of TCP requests is causing performance issues.**
+   - **Layer 4 (Transport Layer)**: TCP (Transmission Control Protocol) operates at the transport layer, managing communication between applications by ensuring reliable and ordered delivery of data packets.
+
+7. **A SQL injection attack was detected by the SOC. This SQL injection may have deleted several database tables.**
+   - **Layer 7 (Application Layer)**: SQL injection attacks target applications that use SQL databases (operating at the application layer) to manipulate data, potentially causing data loss or unauthorized access.
+
+8. **A switch suddenly stopped working, and local machines aren't receiving any traffic.**
+   - **Layer 2 (Data Link Layer)**: Switches operate at the data link layer and are responsible for forwarding data frames within a local area network.
+
+9. **An Ethernet cable was disconnected, and the machine connected isn't able to receive any external traffic.**
+   - **Layer 1 (Physical Layer)**: The physical layer manages the actual physical connection between devices, including Ethernet cables.
+
+10. **Traffic within the network is being directed from the switch to a suspicious device.**
+    - **Layer 2 (Data Link Layer)**: Switches use MAC addresses (data link layer addresses) to determine where to forward network traffic within a local area network.
