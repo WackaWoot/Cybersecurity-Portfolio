@@ -1,0 +1,37 @@
+1. Log into your Windows 10 machine as sysadmin
+
+2. Open PowerShell and create a new script file:
+notepad C:\Users\sysadmin\Documents\enum_acls.ps1
+
+3. Copy and paste the following script into the Notepad file:
+
+$directory = Get-ChildItem -Path .  
+
+foreach ($item in $directory) {  
+    Get-Acl $item.FullName  
+}
+
+
+4. Save and close the file.
+
+5. Test the script by running:
+cd C:\Windows
+C:\Users\sysadmin\Documents\enum_acls.ps1
+
+6. Verify the output displays ACLs for all files in the current directory.
+
+Verify PowerShell Logging GPO
+
+1. Ensure you're logged into Windows 10 as sysadmin
+
+2. Open PowerShell as Administrator and run:
+gpupdate /force
+
+3. Close and reopen PowerShell.
+
+4. Navigate to any directory (e.g., C:\Windows) and run:
+C:\Users\sysadmin\Documents\enum_acls.ps1
+
+5. Navigate to C:\Users\sysadmin\Documents.
+
+6. Locate the PowerShell transcript logs inside a dated folder (e.g., 20250204).
