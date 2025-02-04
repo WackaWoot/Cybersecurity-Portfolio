@@ -1,0 +1,99 @@
+Step 1: Ensure Permissions on Sensitive Files
+The /etc/ directory is where system configuration files exist. Start by navigating to this directory with cd /etc/.
+ cd /etc/
+
+Inspect the file permissions of each of the following files. If any file's permissions do not match the descriptions listed here, update the file's permissions.
+ ls -l /etc/shadow /etc/gshadow /etc/group /etc/passwd
+
+Permissions on /etc/shadow should allow only root read and write access.
+Permissions on /etc/gshadow should allow only root read and write access.
+Permissions on /etc/group should allow root read and write access, and allow everyone else read access only.
+Permissions on /etc/passwd should allow root read and write access, and allow everyone else read access only.
+
+/etc/shadow (only root can read & write):
+  sudo chmod 600 /etc/shadow
+/etc/gshadow (only root can read & write):
+  sudo chmod 600 /etc/gshadow
+/etc/group (root can read/write, others can read):
+  sudo chmod 644 /etc/group
+/etc/passwd (root can read/write, others can read):
+  sudo chmod 644 /etc/passwd
+
+
+Step 2: Create User Accounts
+In this step, you'll set up various users in the system. For this exercise, use the useradd command. Research this command to determine how to best use this tool to create the user accounts. The necessary commands do not require that you work from a specific directory.
+
+Add user accounts for sam, joe, amy, sara, and admin1.
+Make sure that only the admin1 user has general sudo group access. This requires a command that will allow user modifications.
+
+Add users:
+sudo useradd sam
+sudo useradd joe
+sudo useradd amy
+sudo useradd sara
+sudo useradd admin1
+
+Set passwords for the users (optional but recommended):
+sudo passwd sam
+sudo passwd joe
+sudo passwd amy
+sudo passwd sara
+sudo passwd admin1
+
+Grant admin1 sudo access:
+sudo usermod -aG sudo admin1
+
+
+Step 3: Create User Group and Collaborative Folder
+Now, you'll run the commands to fully set up a group on your system.
+This requires you to create a group, add users to it, create a shared group folder, and set the group folder owners for this shared folder.
+Add the group engineers to the system.
+Add users sam, joe, amy, and sara to the managed group. The process is similar to the one you used to add admin1 to the sudo group in the previous step.
+Create a shared folder for this group: /home/engineers.
+Change ownership on the new engineers' shared folder to the engineers group.
+
+Create the engineers group:
+sudo groupadd engineers
+
+Add users to the engineers group:
+sudo usermod -aG engineers sam
+sudo usermod -aG engineers joe
+sudo usermod -aG engineers amy
+sudo usermod -aG engineers sara
+
+Create a shared folder for the group:
+sudo mkdir /home/engineers
+
+Change group ownership of the shared folder:
+sudo chown :engineers /home/engineers
+
+Set proper permissions for collaborative access:
+sudo chmod 770 /home/engineers
+[This ensures only users in the engineers group can access the folder.]
+
+Step 4: Lynis Auditing
+The final step on your administrator's list involves running an audit against the system in order to harden it. You'll use the system and security auditing tool Lynis to do so.
+Install the Lynis package to your system if it is not already installed.
+Check the Lynis documentation for instructions on how to run a system audit.
+Run a Lynis system audit with sudo.
+Provide a report from the Lynis output with recommendations for how to harden the system.
+
+Install Lynis (if not already installed):
+
+For Debian/Ubuntu [This use case]:
+sudo apt update && sudo apt install lynis -y
+
+Run a system audit:
+sudo lynis audit system
+
+Review and note down security recommendations from the audit report.
+
+Common hardening recommendations may include:
+Updating software packages (sudo apt update && sudo apt upgrade -y)
+Disabling unnecessary services (sudo systemctl disable <service>)
+Strengthening SSH settings in /etc/ssh/sshd_config
+Configuring a firewall (sudo ufw enable or sudo firewall-cmd --permanent --add-service=ssh)
+
+Final Notes
+Double-check your work using ls -l, cat /etc/group, and id <username> to verify permissions, groups, and ownership.
+If any step fails, use sudo or check logs (journalctl -xe or /var/log/auth.log for permission issues).
