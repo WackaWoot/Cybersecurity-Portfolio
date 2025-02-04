@@ -1,0 +1,34 @@
+
+Instructions
+Convert the following binary representations into numeric IP addresses:
+
+
+1 - 11000000101010000100010110010001
+2 - 00001010000000000000000000101010
+3 - 11000000101011000100010110010001
+4 - 00101001001011011011011000100000
+5 - 00001010000000000000000001001100
+
+Determine if the numeric IP addresses are public or private.
+
+
+Compare the numeric IP addresses to the Acme server list and determine which server the IPs belong to.
+
+
+Summarize your findings to determine what resources the hacker is trying to access.
+
+Hacker is trying to access trade secret servers private and public as well as public Int. Property servers
+
+Bonus
+10001000 11110111 11000111 01100101 00011010 00110110
+
+
+1 - 192.168.69.145 - trade secrets (Private)
+2 - 10.0.0.42 - trade secrets (private)
+3 - 192.172.69.145 -trade secrets (Public)
+4 - 41.45.182.32 - Intellectual property server (public)
+5 - 10.0.0.76 - trade secrets (private)
+
+Bonus - binary to hexadecimal:
+88 f7 c7 65 1a 36 (most likely a target machine)
+
