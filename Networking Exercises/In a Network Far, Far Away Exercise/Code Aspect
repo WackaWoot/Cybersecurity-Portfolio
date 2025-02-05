@@ -1,0 +1,133 @@
+Mission 1: Investigate and Fix Mail Server Issues
+
+Step 1: Identify Current Mail Servers for starwars.com
+Run the following command to query the MX records for starwars.com:
+nslookup -query=mx starwars.com
+
+This will display the current mail servers responsible for handling email for starwars.com.
+
+Step 2: Identify the Issue
+If starwars.com is able to send but not receive emails, the MX records may be incorrect or missing.
+Ensure that the correct mail servers are listed:
+Primary: asltx.1.google.com
+Secondary: asltx.2.google.com
+Also, check if there are incorrect or outdated MX records pointing to the old mail servers.
+
+Step 3: Fix the DNS Records
+To update MX records, use the following structure in your DNS provider’s settings:
+MX 10 asltx.1.google.com.
+MX 20 asltx.2.google.com.
+Ensure proper email flow by checking SPF and DMARC records as well.
+
+
+Mission 2: Fix SPF Record for theforce.net
+
+Step 1: Retrieve SPF Record
+Run the following command to check the TXT records:
+nslookup -query=txt theforce.net
+
+The SPF record should allow emails to be sent from the authorized IP address (45.23.176.21).
+
+Step 2: Identify the Issue
+If theforce.net's SPF record does not include the new IP, emails will be flagged as spam.
+SPF records typically look like this:
+v=spf1 ip4:45.23.176.21 -all
+
+If 45.23.176.21 is missing, it needs to be added.
+
+Step 3: Update SPF Record
+The updated SPF record should be added in the domain’s DNS settings as:
+v=spf1 ip4:45.23.176.21 include:_spf.google.com -all
+
+
+Mission 3: Fix CNAME Redirection for resistance.theforce.net
+
+
+Step 1: Verify CNAME for www.theforce.net
+Run:
+nslookup -query=cname www.theforce.net
+This will display how CNAME records are currently set.
+
+Step 2: Identify the Issue
+If resistance.theforce.net is not redirecting, its CNAME record may be missing.
+Expected CNAME entry:
+resistance.theforce.net.  CNAME  theforce.net.
+
+Step 3: Fix CNAME Record
+Add this CNAME record in the domain’s DNS settings:
+CNAME  resistance.theforce.net theforce.net.
+
+
+Mission 4: Add Backup Name Server for princessleia.site
+
+
+Step 1: Check Existing NS Records
+Run:
+nslookup -query=ns princessleia.site
+
+This will display the current name servers.
+
+Step 2: Identify the Issue
+If ns2.galaxybackup.com is missing, the domain does not have a backup DNS server.
+Step 3: Add the Backup DNS Server
+The updated NS records should be:
+NS  ns1.princessleia.site.
+NS  ns2.galaxybackup.com.
+
+
+Mission 5: Find the Shortest Path Using OSPF
+
+
+Step 1: Review the Galaxy Network Map
+Identify the shortest path from Batuu to Jedha using OSPF.
+Exclude Planet N from the route.
+
+Step 2: Document the Shortest Path
+Example path:
+Batuu → Planet X → Planet Y → Jedha
+Ensure no hops pass through Planet N.
+
+Step 3: Implement Static Routing
+On the Resistance routers, set up a static route:
+ip route add <destination> via <next-hop>
+Replace <destination> and <next-hop> with the appropriate values.
+
+
+Mission 6: Decrypt Dark Side Wireless Traffic
+
+
+Step 1: Crack the WPA Key Using Aircrack-ng
+Run:
+aircrack-ng -w /usr/share/wordlists/rockyou.txt -b <BSSID> darkside.pcap
+Replace <BSSID> with the target wireless network’s MAC address.
+
+If successful, the WPA key will be revealed.
+
+Step 2: Decrypt Wireless Traffic in Wireshark
+Open darkside.pcap in Wireshark.
+Go to Edit > Preferences > Protocols > IEEE 802.11.
+Enter the key in the format:
+<Wireless_key>:<SSID>
+
+Step 3: Identify Dark Side’s IP and MAC Addresses
+Filter decrypted traffic in Wireshark:
+arp or ip.addr
+Document IP and MAC addresses for Resistance countermeasures.
+
+
+Mission 7: Retrieve Hidden Message from TXT Record
+
+
+Step 1: Query the TXT Record
+Run:
+nslookup -query=txt princessleia.site
+Look for a hidden message.
+
+Step 2: Follow the Instructions
+If the message contains a Telnet address, connect to it:
+telnet <address>
+If using IPv6, modify the command:
+telnet -6 <address>
+Step 3: Document the Secret Message
+Take notes or screenshots to report back to the Resistance.
+(a telnet version of Starwars Episode IV)
