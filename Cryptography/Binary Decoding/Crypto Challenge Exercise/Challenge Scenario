@@ -1,0 +1,146 @@
+
+Scenario 
+
+You are a Cybersecurity Analyst at Nakatomi Hospital. Unfortunately, a doctor opened up an email containing ransomware.
+
+The ransomware spread throughout the hospital and encrypted all patient records. The ransomware has given you two options to decrypt and retrieve your patient records:
+
+Pay 100 Bitcoins  
+
+Solve 6 Riddles
+
+Since you refuse to pay off any ransom, you will need to act fast to solve the six riddles from the ransomware. The doctors need to access the patient records! Lives are at stake!
+
+
+Instructions
+
+The ransomware encrypted the patient records and provided you with six different riddles. These riddles can be found in the above toolbar. To solve each riddle, cryptography concepts will need to be applied.
+
+Once the riddle has been solved, submit your answer on the bottom of each riddle page. If the correct answer is provided, a key will be given.
+
+Keep track of all of your keys. Once they are all obtained, select the RANSOMWARE DECRYPTER link above and enter in all of your keys!
+
+Good luck and act fast. The Nakatomi patients are counting on you!
+
+
+Riddle 1
+
+Roses are Red, Violets are Blue,
+Caesar would be 8 is your first clue.
+
+Decrypt ozcjmz and enter it below,
+and maybe a key then might just show.
+
+
+Riddle 2
+
+Humpty Dumpty Sat on the Wall,
+Humpty Dumpty had a great Fall,
+
+All the king’s Horses and all the
+King’s Men couldn’t decode this
+message for him:
+
+01000111 01100101 01101110
+01101110 01100101 01110010
+01101111
+
+
+Riddle 3
+
+I’m a little Cipher,
+short and sweet.
+
+Here is my vector,
+and also my key
+
+When I get all steamed up,
+hear me shout!
+
+Just use OpenSSL to figure me out.
+
+Cipher Text: 
+4qMOIvwEGXzvkMvRE2bNbg==
+
+Key: 
+5284A3B154D99487D9D8D8508461A478C7BEB67081A64AD9A15147906E8E8564
+
+IV (Initialization Vector): 
+1907C5E255F7FC9A6B47B0E789847AED
+
+OpenSSL Options:
+-pbkdf2 
+-nosalt 
+-aes-256-cbc
+base64
+
+
+Riddle 4
+
+Jack and Jill went up a Hill to 
+use their public Keys.
+
+Jack had 2, and Jill did too
+to exchange their messages
+with ease.
+
+What would Jack use to send 
+an encrypted message to Jill?
+
+Jack’s Public Key
+Jack’s Private Key
+Jill’s Public Key
+Jill’s Private Key
+
+What would Jill use to decrypt Jack’s message?
+
+Jack’s Public Key
+Jack’s Private Key
+Jill’s Public Key
+Jill’s Private Key
+
+Jack and Jill invited Bob, Alice, Tim, and Peter along to exchange some messages. How many keys would they all need for asymmetric vs symmetric encryption?
+
+6 Asymmetric and 15 Symmetric
+15 Asymmetric and 12 Symmetric
+
+Tim sent an encrypted message to one of his friends. Which of the following keys did he likely use to encrypt the message?
+
+Tim’s Public Key
+Alice’s Public Key
+Peter’s Private Key
+Tim’s Private Key
+Bob’s Private Key
+
+
+Riddle 5
+
+Hey diddle diddle,
+the cat and the fiddle,
+The cow jumped over the moon.
+
+The little dog laughed
+when it found this MD5 hash,
+
+And the dish ran away with the spoon!
+Hash:
+3b75cdd826a16f5bba0076690f644dc7 
+
+
+Riddle 6
+
+Mary had a secret code,
+Hidden in a photo,
+And everywhere that photo went,
+The code was sure to go.
+
+She wrote the passphrase on the
+book, to access the code
+You just need to use some stego
+tricks and the secret will show.
+Image Link:       
+
+https://drive.google.com/file/d/1m9ykscnTGzgkkVet9wmiBCYsbhzbrKR9/view   
+  
+
+
