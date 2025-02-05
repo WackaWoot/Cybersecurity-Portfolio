@@ -1,0 +1,53 @@
+For each, determine the following data points:
+-Delivered-to
+-Return-Path
+-IP Address of Source Domain
+-Message-ID
+
+Email 1
+Delivered-To: Juliejones@acme.com
+Return-Path: johnathanthomas@microsoft.com
+IP address of source domain:40.76.4.15
+Message-ID: <1689837351.2998569.1568044304435@mail.microsoft.com>
+
+Email 2
+Delivered-To:: juliejones@acme.com
+Return-Path:xzvvvret34344@yahoo.com
+IP address of source domain:74.6.130.41
+Message-ID: <1689837351.2998569.1568044304435@mail.yahoo.com>
+
+Email 3
+Delivered-To:  juliejones@acme.com
+Return-Path:timmytom@widgets.com>
+IP address of source domain:34.86.130.49 
+Message-ID:1gytrdd9837351.987987abs9.1568044304435@mail.widgets.com>
+
+Email 4
+Delivered-To juliejones@acme.com
+Return-Path:return@irs.org>
+IP address of source domain:64.71.74.115
+Message-ID:<404021289698796556000_11022028878758757117@jdq.hentersss.com>
+
+Email 5
+Delivered-To juliejones@acme.com
+Return-Path: billybob@companyA.com
+IP address of source domain:209.85.210.51
+Message-ID:CACLG$52234Ygm1FNJZWXQc=dR-cv-jw+KRbRPf455BU6E-Xp_xDEA@mail.gmail.com>
+
+--------------------------------------------------------------------------------------------
+
+An email fails the Received-SPF verification, but was a legitimate email.
+
+USE https://mxtoolbox.com/spf.aspx
+What does this indicate?
+What would you recommend to prevent future emails from failing this validation?
+
+Email1 : legitimate - authorized to send
+
+Email 2: Pass but suspicious
+
+Email 3: Fail -easily spoofed - DNS Valid
+
+Email 4: Fail - DMARC policy not enabled
+
+Email 5: Fail - DMARC Quarantine/Reject policy not enabled
