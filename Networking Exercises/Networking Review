@@ -1,0 +1,239 @@
+Part 1: HTTP
+Open reviewpackets.pcapng.
+Filter for HTTP traffic.
+
+
+Make sure Name Resolution for Resolving Network Addresses is enabled.
+
+
+There should be four HTTP packets.
+
+
+A. Answer the following questions on HTTP:
+What does HTTP stand for? Hyper Text translation Protocol
+
+
+What is the port number for HTTP? 80
+
+
+What types of services does HTTP provide? HTML
+
+
+Which OSI layer does HTTP exist in? 7
+
+
+What website is being accessed? example.com
+
+
+What is the source port being used? 58424
+
+
+What is the port number range that this port is part of?
+private
+B. Select packet number 419, which should be the first HTTP packet. View the packet details to answer the following questions:
+Under Ethernet II is a value of Destination: Technico_65:1a:36 (88:f7:c7:65:1a:36).
+
+
+What does this value represent? BSS ID
+
+
+Which OSI layer does this exist in? 2 data link
+
+
+What networking devices use these values? routers
+
+
+Part 2: ARP
+Continue viewing the same PCAP.
+Filter for ARP traffic.
+
+
+There should be 115 ARP packets.
+
+
+A. Answer the following questions on ARP:
+What does ARP stand for? Address Resolution protocol
+
+
+What service does ARP provide? Resolving IP Addresses/ sending messages to other machines across a network
+
+
+Which OSI layer does ARP exist in? 2 and 3
+
+
+What type of networking request does ARP first make?
+Broadcast request
+
+
+B. Use a filter to find the count of ARP responses, and answer the following questions:
+What is the IP of the device that is responding?10.0.0.32
+
+
+To what IP is the device responding?10.0.0.31   
+Write out in simple terms what has taken place, describing the request and response.
+This is either a ARP request storm/ Arp Scan where one IP is looking down the IP table for responses to a machine
+
+
+Part 3: DHCP
+Continue viewing the same PCAP.
+Filter for DHCP traffic.
+
+
+There should be four DHCP packets.
+
+
+A. Answer the following questions on DHCP:
+What does DHCP stand for? Dynamic Host Configuration Protocol
+
+
+What service does DHCP provide? assigns IP
+
+
+Which OSI layer does DHCP exist in? App layer - 7
+
+
+What are the four steps of DHCP? Discovery, offer, request , ack
+
+
+B. Use a filter to view the DHCP Discover, and answer the following questions on that packet:
+What is the original source IP? 10.0.0.32
+
+
+Why does it have that value? Previously assign as such
+
+
+What is the original destination IP? 255.255.255.255
+
+
+What does that value signify? The DHCP server
+
+
+C. Use a filter to view the DHCP ACK, and answer the following questions on that packet.
+In simple terms, what is happening in this packet?the Ip is being released and renewed
+
+
+What is DHCP lease? Time that IP is loaned for
+
+
+What is the DHCP lease time provided in this packet? 7 days
+
+
+Part 4: TCP and UDP
+Continue viewing the same PCAP.
+Filter for the following IP address: 185.42.236.155.
+
+
+There should be five packets.
+
+
+A. Answer the following questions on TCP:
+What does TCP stand for? Transmission Control Protocol.
+
+
+Is TCP connection-oriented or connection-less? Connesction-Oriented.
+
+
+Which OSI layer does TCP exist in? Layer 4. Transport. 
+
+
+What are the steps in a TCP connection? SYN, SYN-ACK, ACK.
+ 
+
+
+What are the steps in a TCP termination? FIN, ACK, FIN, ACK.
+
+
+What steps appear in the packets displayed? SYN, SYN-ACK, ACK.
+
+
+What type of activity/protocol is TCP establishing a connection for? HTTP/Webrowsing. 
+
+
+What is the website name being accessed after the TCP connection? http://sportingnews.com/
+
+
+B. Answer the following questions on UDP:
+What does UDP stand for? User Datagram Protocol. 
+
+
+Is UDP connection-oriented or connection-less? Connection-Less.
+
+
+What type of services would UDP provide a benefit for?  UDP supports broadcasting to multiple recipients, making it useful for applications such as video streaming and online gaming.
+
+
+Part 5: Network Devices, Topologies, and Routing
+Open reviewdoc and answer the following questions:
+Topologies
+
+
+What are the topologies for A, B, and C? A - Tree ; B -  bus ; C - ring
+
+
+What are the advantages and disadvantages for each? 
+A - easy to organize, can be slow due to needing to route info, single point of failure though  
+B - each computer can send info to every other computer easily, but only one computer can send information at a time due to there being only a single connection, connection is a single point of failure
+C - each computer has access to all information, but connection is a single point of failure if ring has no redundancy and structure is rigid
+
+
+Network Devices
+
+
+In the network devices illustration, what are numbers 1–4? 1 - web ; 2 - firewall ; 3 - switch ; 4 - router
+
+
+What does the dashed line represent in number 5? DMZ
+
+
+What is a load balancer? It’s a traffic monitor for servers to balance load to make sure servers don’t get overloaded
+
+
+Where would you place a load balancer? Right in line of traffic to servers
+
+
+Network Routing
+
+
+Which routing protocols use distance as a criterion?
+Distance Vector Routing Protocols:
+Which routing protocols use speed as a criterion?
+Link-State Routing Protocols:
+Using the shortest number of hops, determine the shortest path from A to O.
+
+
+Using the least time, determine the shortest path from A to O.
+
+
+Part 6: Network Addressing
+Answer the following questions.
+What is binary?
+Binary is a base-2 numeral system that uses only two symbols: 0 and 1.
+
+What are the two binary states?
+The two binary states are:
+1: Represents the on state or true condition.0: Represents the off state or false condition.
+
+
+
+What are IP addresses used for?
+IP addresses are used for identifying devices on a network and for routing packets of data between source and destination across the internet and other networks. They enable devices to communicate with each other.
+
+What are the two primary versions of IP addresses?
+The two primary versions of IP addresses are:
+IPv4 (Internet Protocol version 4)
+IPv6 (Internet Protocol version 6)
+
+How many octects are in an IPv4 address?
+An IPv4 address consists of 4 octets. Each octet is 8 bits long, making a total of 32 bits.
+
+Use a web tool to determine the IP of the following binary representation: 11000000.10101000.00100000.00101011.
+192.168.32.43
+.
+What is the difference between primary and public IP addresses?
+Private IP Addresses: These are used within private networks and are not routable on the internet.  Public IP Addresses: These are assigned to devices that need to be accessible from the internet. They are routable on the global internet.
+
+What is CIDR?
+ (Classless Inter-Domain Routing) is a method for allocating IP addresses and IP routing.
+
+What is the range of IP addresses in 192.18.65.0/24?
+192.18.65.0 to 192.18.65.255
