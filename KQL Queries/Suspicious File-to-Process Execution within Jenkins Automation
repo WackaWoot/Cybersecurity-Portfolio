@@ -1,0 +1,52 @@
+// List of file extensions to monitor
+let executableExtensions = dynamic(['exe', 'bat', 'cmd', 'vbs', 'ps1', 'psm1', 'wsf']);
+// List of file locations to monitor
+let fileLocations = dynamic([
+    '\\Windows\\System32\\',
+    '\\Windows\\Temp\\',
+    '\\AppData\\Local\\Temp\\',
+    '\\Recycle Bin\\'
+    ]);
+_ASim_FileEvent
+| where EventType == 'FileCreated'
+| extend FileExtension =  tostring(split(FileName, '.')[1])
+| where FileExtension in~ (executableExtensions) and FilePath has_any (fileLocations)
+| project
+    TimeGenerated,
+    DvcHostname,
+    DvcDomain,
+    User,
+    ActingProcessId,
+    ActingProcessName,
+    CommandLine,
+    FileName,
+    FilePath,
+    Hash,
+    HashType
+| extend Username = iff(User contains '@', tostring(split(User, '@')[0]), User) // username@domain.com --> username
+| extend UPNSuffix = iff(User contains '@', tostring(split(User, '@')[1]), '') // username@domain.com --> domain.com
+| extend Username = iff(User contains '\\', tostring(split(User, '\\')[1]), Username) // NT AUTHORITY\SYSTEM --> SYSTEM
+| extend NTDomain = iff(User contains '\\', tostring(split(User, '\\')[0]), '') // NT AUTHORITY\SYSTEM --> NT AUTHORITY, user.domain.com --> ""
+| extend Host_0_HostName = DvcHostname
+| extend Host_0_DnsDomain = DvcDomain
+| extend Host_0_NTDomain = NTDomain
+| extend Account_0_Name = Username
+| extend Account_0_UPNSuffix = UPNSuffix
+| extend Account_0_NTDomain = NTDomain
+| extend File_0_Name = FileName
+| extend File_0_Directory = FilePath
+| extend FileHash_0_Algorithm = HashType
+| extend FileHash_0_Value = Hash
+| extend Process_0_ProcessId = ActingProcessId
+| extend Process_0_CommandLine = CommandLine
+| where Username != "SYSTEM" and Username != "NETWORK SERVICE"
+| where tolower(Username) !in ("admin1", "admin2", "admin3", "admin4", "admin5")
+| where not(Username == "csullivan" and DvcHostname == "DeviceName" and FilePath contains "WebCompiler")
+| where not(FileName has_all ("jenkins-gitclient-", ".bat")) and Username != "jenkins_svc" and DvcHostname != "build-p01" and FilePath !startswith @"C:\Users\jenkins_svc\AppData\Local\Temp\jenkins-gitclient-"
+| summarize count(), Users = make_set(Username), Devices = make_set(DvcHostname), FilePaths = make_set(FilePath), Times = make_set(TimeGenerated) by FileName
+| extend NumOfUsers = array_length(Users), NumOfDevices = array_length(Devices)
+| where NumOfDevices <= 15
+| sort by count_ desc
+
+_ASim_ProcessEvent
+|limit 10
