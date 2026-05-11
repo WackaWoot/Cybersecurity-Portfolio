@@ -1,1 +1,27 @@
+let AdobeParents = dynamic(["acrord32.exe","acrobat.exe","acrocef.exe","acrord64.exe"]);
+let SuspChildren = dynamic(["cmd.exe","powershell.exe","pwsh.exe","wscript.exe","cscript.exe","mshta.exe",
+                            "rundll32.exe","regsvr32.exe","certutil.exe","bitsadmin.exe","wmic.exe"]);
+DeviceProcessEvents
+| where Timestamp >= ago(30d)
+| where tolower(InitiatingProcessFileName) in (AdobeParents)
+| where tolower(FileName) in (SuspChildren)
+| where InitiatingProcessCommandLine contains "outlook" 
+| project Timestamp, DeviceName,
+          InitiatingProcessFileName, InitiatingProcessCommandLine,
+          FileName, ProcessCommandLine,
+          AccountName, FolderPath, SHA1
+| order by Timestamp desc
+
+
+let AdobeKnownHostRegex = @'(?i)(^|\.)(adobesc\.com|licenses\.com|adobelogin\.com|ftcdn\.net|behance\.net|adobedtm\.com|demdex\.net|demandbase\.com|adobeoobe\.com|macromedia\.com|adbemdigitalmediarebootprod2\.112\.2o7\.net|edgefonts\.net|adoberevel\.com|photoshop\.com|adobeexchange\.com|adobecce\.com|okta\.com|oktacdn\.com|oktapreview\.com|businesscatalyst\.com|worldsecuresystems\.com|digicert\.com|adobe\.io)$';
+let AdobeParents = dynamic(["acrord32.exe","acrobat.exe","acrocef.exe","acrord64.exe"]);
+DeviceNetworkEvents
+| where Timestamp >= ago(30d)
+| where tolower(InitiatingProcessFileName) in (AdobeParents)
+| extend Host = tolower(tostring(parse_url(RemoteUrl).Host))
+| where isnotempty(Host)
+| where not(Host matches regex AdobeKnownHostRegex)
+| project Timestamp, DeviceName, InitiatingProcessFileName, InitiatingProcessCommandLine,
+          RemoteUrl, Host, RemoteIP, RemotePort, Protocol, AdditionalFields
+| order by Timestamp desc
 
