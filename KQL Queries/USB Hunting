@@ -1,0 +1,137 @@
+// This query will show users who are not whitelisted and were not blocked by the USB policy who mounted a removable media source
+//
+// Manual list of users who are whitelisted to use a specific USB: https://intune.microsoft.com/#view/Microsoft_AAD_IAM/GroupDetailsMenuBlade/~/Overview/groupId/ba707c89-380d-4222-823f-0947d9edf990/menuId/
+let UsbWhitelist = pack_array(
+  "Person1", "person2", "person3"
+);
+//
+// List of users who received a block action from our USB policy
+let blockedUsers = DeviceEvents
+| where Timestamp >= ago(90d)
+| where ActionType startswith "RemovableStorage"
+| extend InitiatingProcessAccountName = substring(InitiatingProcessAccountName, 5, strlen(InitiatingProcessAccountName))
+| distinct InitiatingProcessAccountName;
+//
+// List of devices that users got a block action from our USB policy on
+let blockedDevices = DeviceEvents
+| where Timestamp >= ago(90d)
+| where ActionType startswith "RemovableStorage"
+| distinct DeviceName;
+//
+// Filtering out users who mounted a USB to see those who were not whitelisted and not blocked
+DeviceEvents
+| where Timestamp >= ago(90d)
+| where ActionType startswith "UsbDriveMounted"
+| where not(InitiatingProcessAccountUpn has_any (UsbWhitelist)) // filtering out those who are whitelisted
+| extend Blocked = iif(InitiatingProcessAccountName has_any (blockedUsers) and DeviceName has_any (blockedDevices), "True", "") // creating a column to identify if a user was blocked on a device when mounting a removable media source
+| extend parsed = parse_json(AdditionalFields) // details about the removable media, most of which come out blank
+| extend 
+        RemovableStorageAccess        = tostring(parsed.RemovableStorageAccess)
+      , RemovableStoragePolicyVerdict = tostring(parsed.RemovableStoragePolicyVerdict)
+      , MediaBusType                  = tostring(parsed.BusType)
+      , MediaClassGuid                = tostring(parsed.ClassGuid)
+      , MediaClassName                = tostring(parsed.ClassName)
+      , MediaDeviceId                 = tostring(parsed.DeviceId)
+      , MediaInstanceId               = tostring(parsed.DeviceInstanceId)
+      , MediaName                     = tostring(parsed.MediaName)
+      , RemovableStoragePolicy        = tostring(parsed.RemovableStoragePolicy)
+      , MediaProductId                = tostring(parsed.ProductId)
+      , MediaVendorId                 = tostring(parsed.VendorId)
+      , MediaSerialNumber             = tostring(parsed.SerialNumber)
+      , DriveLetter                   = tostring(parsed.DriveLetter)
+      , Manufacturer                  = tostring(parsed.Manufacturer)
+      , ProductName                   = tostring(parsed.ProductName)
+      , Volume                        = tostring(parsed.Volume)
+| where not(ProductName has_any ("Virtual DVD-ROM", "Virtual CD 259F", "VMware SATA ")) // filtering out VMs that mount when connecting to them
+| where Blocked == "" // filtering for stuff that was not identified as having been blocked
+| project 
+        Timestamp
+      , DeviceName
+      , ActionType
+      , Blocked
+      , InitiatingProcessAccountName
+      , InitiatingProcessAccountUpn
+      , RemovableStorageAccess
+      , RemovableStoragePolicyVerdict
+      , MediaBusType
+      , MediaClassGuid
+      , MediaClassName
+      , MediaDeviceId
+      , MediaInstanceId
+      , MediaName
+      , RemovableStoragePolicy
+      , MediaProductId
+      , MediaVendorId
+      , MediaSerialNumber
+      , DriveLetter
+      , Manufacturer
+      , ProductName
+      , Volume
+      , AdditionalFields
+| summarize 
+        UsbMountedCount = count()
+      , ProductNames = make_set(ProductName) 
+        by 
+        DeviceName
+      , InitiatingProcessAccountName
+      , InitiatingProcessAccountUpn
+| sort by UsbMountedCount desc
+
+
+// This query will show users who were blocked by the USB policy when plugging in a removable media source
+DeviceEvents
+| where Timestamp >= ago(90d)
+| where ActionType startswith "RemovableStorage"
+| extend parsed = parse_json(AdditionalFields) // details on the removable media
+| extend 
+        RemovableStorageAccess        = tostring(parsed.RemovableStorageAccess)
+      , RemovableStoragePolicyVerdict = tostring(parsed.RemovableStoragePolicyVerdict)
+      , MediaBusType                  = tostring(parsed.BusType)
+      , MediaClassGuid                = tostring(parsed.ClassGuid)
+      , MediaClassName                = tostring(parsed.ClassName)
+      , MediaDeviceId                 = tostring(parsed.DeviceId)
+      , MediaInstanceId               = tostring(parsed.DeviceInstanceId)
+      , MediaName                     = tostring(parsed.MediaName)
+      , RemovableStoragePolicy        = tostring(parsed.RemovableStoragePolicy)
+      , MediaProductId                = tostring(parsed.ProductId)
+      , MediaVendorId                 = tostring(parsed.VendorId)
+      , MediaSerialNumber             = tostring(parsed.SerialNumber)
+      , DriveLetter                   = tostring(parsed.DriveLetter)
+      , Manufacturer                  = tostring(parsed.Manufacturer)
+      , ProductName                   = tostring(parsed.ProductName)
+      , Volume                        = tostring(parsed.Volume)
+| project 
+        Timestamp
+      , DeviceName
+      , ActionType
+      , InitiatingProcessAccountName
+      , InitiatingProcessAccountUpn
+      , RemovableStorageAccess
+      , RemovableStoragePolicyVerdict
+      , MediaBusType
+      , MediaClassGuid
+      , MediaClassName
+      , MediaDeviceId
+      , MediaInstanceId
+      , MediaName
+      , RemovableStoragePolicy
+      , MediaProductId
+      , MediaVendorId
+      , MediaSerialNumber
+      , DriveLetter
+      , Manufacturer
+      , ProductName
+      , Volume
+      , AdditionalFields
+| summarize 
+        UsbBlockedCount = count()
+      , MediaBusTypes = make_set(MediaBusType)
+      , MediaClassNames = make_set(MediaClassName)
+      , MediaNames = make_set(MediaName) 
+        by 
+        DeviceName
+      , ActionType
+      , InitiatingProcessAccountName
+      , InitiatingProcessAccountUpn
+      //, AdditionalFields
+| sort by UsbBlockedCount desc
