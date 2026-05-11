@@ -1,0 +1,44 @@
+let UrlList = dynamic([
+    "https://nfv6k7b2-80.euw.devtunnels.ms/info/",
+"https://x3tk5kkm-80.use.devtunnels.ms/info/",
+"https://dietary-remembered-traditionenhancing.trycloudflare.com/info/",
+"https://ken-induced-session-leg.trycloudflare.com/info/",
+"http://bore.pub:59266/info/",
+"http://bore.pub:37040/info/"
+]);
+DeviceNetworkEvents
+| where isnotempty(RemoteUrl)
+| where RemoteUrl has_any (UrlList)
+| project DeviceId, DeviceName, RemoteUrl, Timestamp
+
+
+// Maintain your allow/block list here
+let Domains = datatable(Domain:string)
+[
+    "devtunnels.ms",
+"trycloudflare.com",
+"bore.pub"
+];
+DeviceNetworkEvents
+| where isnotempty(RemoteUrl)
+| extend Host = tostring(parse_url(RemoteUrl).Host)
+| join kind=inner (Domains) on $left.Host == $right.Domain
+| project DeviceId, DeviceName, RemoteUrl, Timestamp
+
+
+let Domains = datatable(Domain:string)
+[
+    "devtunnels.ms",
+"trycloudflare.com",
+"bore.pub"
+];
+DeviceNetworkEvents
+| where isnotempty(RemoteUrl)
+| extend Host = tostring(parse_url(RemoteUrl).Host)
+| join kind=inner (
+    Domains
+    // keep rows where Host == Domain OR Host ends with ".Domain"
+    | extend DomainLower = tolower(Domain)
+) on 1==1
+| where tolower(Host) == DomainLower or tolower(Host) endswith strcat(".", DomainLower)
+| project DeviceId, DeviceName, RemoteUrl, Timestamp
