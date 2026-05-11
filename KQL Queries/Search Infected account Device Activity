@@ -1,0 +1,36 @@
+// This query searches logon events for a user within a certain timeframe and checks any device they have logged into for local accounts created within the same timeframe
+// Initilizing user (or leave blank to search for anyone) and timeframe
+let user = "Username";
+let timeframe = ago(90d);
+//
+// Search IdentityLogonEvents for the user signins within the timeframe specified
+let userLoginsILE = IdentityLogonEvents
+| where TimeGenerated >= timeframe
+| where AccountName contains user
+| where DeviceName !contains "adfs" and DeviceName != ""
+| project TimeGenerated, ActionType, DeviceName, AccountName, IPAddress, LogonType, Protocol;
+//
+// Store the IP addresses of the IdentityLogonEvents query
+let ipaddrs = userLoginsILE
+| project IPAddress;
+//
+// Cross reference the logins found in IdentityLogonEvents with SigninLogs and find any unique IPs in SigninLogs
+let allSignIns = SigninLogs
+| where UserPrincipalName contains user
+| where TimeGenerated >= timeframe
+| where IPAddress !in (ipaddrs) // filter out IP addresses that are already accounted for in IdentityLogonEvents so we do not have duplicate records
+| extend City = LocationDetails["city"], State = LocationDetails["state"], CountryRegion = LocationDetails["countryOrRegion"] // pull location data to make it more readable
+| project TimeGenerated, ActionType = ResultSignature, LogonType = AppDisplayName, AccountName = UserPrincipalName, IPAddress, City, State, CountryRegion
+| union userLoginsILE;
+//
+// Extracting the devices to create a list of them
+let devices = allSignIns
+| distinct replace_string(DeviceName, ".subdomain.domain.com", "");
+//
+// Searching those devices for any local accounts, made by the infected account or not
+DeviceEvents
+| where replace_string(DeviceName, ".subdomain.domain.com", "") in~ (devices)
+| where AccountDomain !contains "subdomain" and AccountName != "" and AccountName !startswith "machineModel" and ActionType contains "UserAccountCreated" and InitiatingProcessAccountName !endswith "$"
+| summarize count(), Devices = make_set(DeviceName), FirstOccurrence = min(TimeGenerated), TimeCreatedPerDevice = make_set(TimeGenerated) by AccountName, InitiatingProcessAccountName
+| sort by count_ desc, AccountName asc
+
