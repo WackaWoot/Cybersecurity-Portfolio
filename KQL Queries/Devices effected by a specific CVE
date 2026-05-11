@@ -1,0 +1,4 @@
+// Find devices affected by a specific vulnerability
+DeviceTvmSoftwareVulnerabilities
+| where CveId == "CVE-XXXX-XXXX"
+| summarize by DeviceName, DeviceId, strcat(OSPlatform, " ", OSVersion), SoftwareName, SoftwareVersion
