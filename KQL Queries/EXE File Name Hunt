@@ -1,0 +1,10 @@
+let exeNames = dynamic([
+  "A.exe", 
+  "B.exe",
+  "C.exe"
+]);
+DeviceProcessEvents
+//| where Timestamp >= ago(30d)
+| where FileName in~ (exeNames)        // in~ = case-insensitive
+| project Timestamp, DeviceName, InitiatingProcessAccountUpn, FileName, FolderPath, ProcessCommandLine, SHA256, InitiatingProcessFileName, InitiatingProcessCommandLine
+| order by Timestamp desc
