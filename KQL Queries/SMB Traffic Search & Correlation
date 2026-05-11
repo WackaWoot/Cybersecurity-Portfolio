@@ -1,0 +1,39 @@
+let suspiciousIP = "8.8.8.8";  // Replace with actual IP from alert
+DeviceNetworkEvents
+| where LocalIP == suspiciousIP or RemoteIP == suspiciousIP
+| where RemotePort == 445 or RemotePort == 139
+| project TimeGenerated, LocalIP, RemoteIP, RemotePort, DeviceName
+| summarize count() by RemoteIP
+
+//Correlation
+let suspiciousIP = "x.x.x.x";  // Replace with the IP you're investigating
+// Step 1: Find the device(s) associated with the IP in the last 24 hours
+let devicesWithIP = DeviceNetworkEvents
+| where TimeGenerated > ago(24h)
+| where LocalIP == suspiciousIP
+| project DeviceName
+| distinct DeviceName;
+// Step 2: Get the most recent *user* logon for those devices (exclude machine accounts)
+let recentUserLogons = DeviceLogonEvents
+| where TimeGenerated > ago(24h)
+| where DeviceName in (devicesWithIP)
+| where AccountName !endswith "$"  // Exclude machine accounts
+| where AccountDomain != "" and AccountName != ""
+| summarize LastLogonTime = max(TimeGenerated) by DeviceName
+| join kind=inner (
+    DeviceLogonEvents
+    | where AccountName !endswith "$"
+    | project DeviceName, AccountName, AccountDomain, TimeGenerated
+) on DeviceName
+| where TimeGenerated == LastLogonTime
+| project DeviceName, UserAccount = strcat(AccountDomain, "\\", AccountName);
+// Step 3: Get SMB traffic involving the suspicious IP
+let smbTraffic = DeviceNetworkEvents
+| where TimeGenerated > ago(24h)
+| where LocalIP == suspiciousIP or RemoteIP == suspiciousIP
+| where RemotePort in (445, 139)
+| project TimeGenerated, SourceDeviceName = DeviceName, RemoteIP;
+// Step 4: Join SMB traffic with user info
+smbTraffic
+| join kind=leftouter (recentUserLogons) on $left.SourceDeviceName == $right.DeviceName
+| summarize SMBConnectionCount = count(), UserAccount = any(UserAccount) by SourceDeviceName, RemoteIP
