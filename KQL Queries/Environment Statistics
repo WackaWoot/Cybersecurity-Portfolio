@@ -1,0 +1,21 @@
+DeviceInfo
+| where 
+    Timestamp > ago(30d)
+    and isempty(MergedToDeviceId)
+    and not(OnboardingStatus in("Unsupported", "Insufficient info"))
+    and DeviceCategory == 'Endpoint'
+| summarize arg_max(Timestamp, *) by DeviceId
+| summarize
+    HealthyOnboardedEndpoints =  countif(OnboardingStatus == 'Onboarded' and SensorHealthState == 'Active'),
+    OnboardedEndpoints =  countif(OnboardingStatus == 'Onboarded'),
+    Endpoints = count(),
+    HealthyOnboardedServers =  countif(DeviceType == 'Server' and OnboardingStatus == 'Onboarded' and SensorHealthState == 'Active'),
+    OnboardedServers = countif(DeviceType == 'Server' and OnboardingStatus == 'Onboarded'), 
+    Servers = countif(DeviceType == 'Server'),
+    HealthyOnboardedCriticalServers =  countif(DeviceType == 'Server' and ExposureLevel == 'High' and OnboardingStatus == 'Onboarded' and SensorHealthState == 'Active'),
+    OnboardedCriticalServers = countif(DeviceType == 'Server' and ExposureLevel == 'High' and OnboardingStatus == 'Onboarded'),
+    CriticalServers = countif(DeviceType == 'Server' and ExposureLevel == 'High')
+| extend
+    EndpointReporting = round(todecimal(HealthyOnboardedEndpoints) / todecimal(Endpoints) * 100, 1),
+    ServerLogging = round(todecimal(HealthyOnboardedServers) / todecimal(Servers) * 100, 1),
+    CriticalServerLogging = round(todecimal(HealthyOnboardedCriticalServers) / todecimal(CriticalServers) * 100, 1)
