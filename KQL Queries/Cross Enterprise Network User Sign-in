@@ -1,0 +1,27 @@
+// Sign in activity for a specified user (shows VPN connections)
+// Initializing user, timeframe, and the type of logon (interactive, office365, etc; leaving blank will display all logon types)
+let user = "username";
+let timeframe = ago(5d);
+let specificLogonType = pack_array("");
+//
+// Search IdentityLogonEvents for the user signins within the timeframe specified
+let userLoginsILE = IdentityLogonEvents
+| where TimeGenerated >= timeframe
+| where AccountName contains user
+| where DeviceName !contains "adfs" and DeviceName != ""
+| project TimeGenerated, ActionType, DeviceName, AccountName, IPAddress, LogonType, Protocol;
+//
+// Store the IP addresses of the IdentityLogonEvents query
+let ipaddrs = userLoginsILE
+| project IPAddress;
+//
+// Cross reference the logins found in IdentityLogonEvents with SigninLogs and find any unique IPs in SigninLogs
+SigninLogs
+| where UserPrincipalName contains user
+| where TimeGenerated >= timeframe
+| where IPAddress !in (ipaddrs) // filter out IP addresses that are already accounted for in IdentityLogonEvents so we do not have duplicate records
+| extend City = LocationDetails["city"], State = LocationDetails["state"], CountryRegion = LocationDetails["countryOrRegion"] // pull location data to make it more readable
+| project TimeGenerated, ActionType = ResultSignature, LogonType = AppDisplayName, AccountName = UserPrincipalName, IPAddress, City, State, CountryRegion
+| union userLoginsILE
+| where LogonType has_any (specificLogonType) // filter for a specific logon type if the user provided an input
+| sort by TimeGenerated desc
