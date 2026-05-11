@@ -3,13 +3,13 @@ OAuthAppInfo
 
 
 OAuthAppInfo
-| extend Organization = iff(AppOwnerTenantId == "8a37c00e-a20b-444e-b73c-092d3f5f5b3a", "My-Business", "Other")
+| extend Organization = iff(AppOwnerTenantId == "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx", "My-Business", "Other")
 | project AppName, AppStatus, PrivilegeLevel, AppOrigin, AppOwnerTenantId, Organization
 
 
 OAuthAppInfo
 | extend Organization = case(
-    AppOwnerTenantId == "8a37c00e-a20b-444e-b73c-092d3f5f5b3a", "My-Business",
+    AppOwnerTenantId == "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx", "My-Business",
     AppOwnerTenantId == "f8cdef31-a31e-4b4a-93e4-5f571e91255a", "Microsoft First Party Applications",
     "Other"
 )
@@ -18,7 +18,7 @@ OAuthAppInfo
 
 OAuthAppInfo
 | extend Organization = case(
-    AppOwnerTenantId == "8a37c00e-a20b-444e-b73c-092d3f5f5b3a", "My-Business",
+    AppOwnerTenantId == "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx", "My-Business",
     AppOwnerTenantId == "f8cdef31-a31e-4b4a-93e4-5f571e91255a", "Microsoft First Party Applications",
     "Other"
 )
@@ -29,7 +29,7 @@ OAuthAppInfo
 
 OAuthAppInfo
 | extend Organization = case(
-    AppOwnerTenantId == "8a37c00e-a20b-444e-b73c-092d3f5f5b3a", "My-Business",
+    AppOwnerTenantId == "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx", "My-Business",
     AppOwnerTenantId == "f8cdef31-a31e-4b4a-93e4-5f571e91255a", "Microsoft First Party Applications",
     "Other"
 )
@@ -41,7 +41,7 @@ OAuthAppInfo
 OAuthAppInfo
 | where TimeGenerated >= datetime(1970-01-01)  // Ensures all records are included
 | extend Organization = case(
-    AppOwnerTenantId == "8a37c00e-a20b-444e-b73c-092d3f5f5b3a", "My-Business",
+    AppOwnerTenantId == "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx", "My-Business",
     AppOwnerTenantId == "f8cdef31-a31e-4b4a-93e4-5f571e91255a", "Microsoft First Party Applications",
     "Other"
 )
@@ -54,7 +54,7 @@ OAuthAppInfo
 OAuthAppInfo
 | where TimeGenerated >= datetime(1970-01-01)  // Include all time
 | extend Organization = case(
-    AppOwnerTenantId == "8a37c00e-a20b-444e-b73c-092d3f5f5b3a", "My-Business",
+    AppOwnerTenantId == "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx", "My-Business",
     AppOwnerTenantId == "f8cdef31-a31e-4b4a-93e4-5f571e91255a", "Microsoft First Party Applications",
     "Other"
 )
@@ -66,7 +66,7 @@ OAuthAppInfo
 OAuthAppInfo
 | where TimeGenerated >= datetime(1970-01-01)  // Include all time
 | extend Organization = case(
-    AppOwnerTenantId == "8a37c00e-a20b-444e-b73c-092d3f5f5b3a", "My-Business",
+    AppOwnerTenantId == "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx", "My-Business",
     AppOwnerTenantId == "f8cdef31-a31e-4b4a-93e4-5f571e91255a", "Microsoft First Party Applications",
     "Other"
 )
