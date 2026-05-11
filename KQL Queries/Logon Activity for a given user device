@@ -1,0 +1,8 @@
+//Logon Activity 
+let device = "machine.domain.com";
+let t0 = ago(30d);
+DeviceLogonEvents
+| where DeviceName =~ device
+| where Timestamp > t0
+| project Timestamp, ActionType, LogonType, AccountName, RemoteIP, InitiatingProcessFileName
+| order by Timestamp asc
