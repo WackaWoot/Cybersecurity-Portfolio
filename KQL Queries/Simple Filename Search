@@ -1,0 +1,6 @@
+let files = set_difference(split(replace(@"\[|\]", "", tolower(```
+doc1
+```)), '\r\n'), dynamic([""]));
+DeviceFileEvents
+| where FileName has_any(files)
+| sort by TimeGenerated desc
