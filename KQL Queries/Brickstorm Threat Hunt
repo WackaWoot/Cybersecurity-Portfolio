@@ -1,0 +1,81 @@
+//Searching for VMware related software on endpoints
+DeviceProcessEvents
+| where Timestamp > ago(90d)
+| where FileName in~ (
+    "vmtoolsd.exe",          // VMware Tools service (daemon)
+    "vmwaretray.exe",        // VMware Tools tray
+    "VMwareUser.exe",        // VMware User Process
+    "vmware-vmx.exe",        // Workstation/Player VM process (rare on servers)
+    "vpxclient.exe"          // Legacy vSphere Client (Win)
+)
+   or ProcessVersionInfoCompanyName =~ "VMware, Inc."
+   or ProcessVersionInfoProductName has_any ("VMware", "vSphere")
+| project Timestamp, DeviceName, FileName, ProcessVersionInfoCompanyName,
+          ProcessVersionInfoProductName, ProcessCommandLine, FolderPath,
+          InitiatingProcessFileName, InitiatingProcessCommandLine
+|project-reorder ProcessVersionInfoProductName
+
+
+// BRICKSTORM: exact IOC hash matching across process, file, and image load events
+let lookback = 90d;
+// Hash sets (MD5, SHA1, SHA256) from Tables 1–8
+let md5_iocs = dynamic([
+  "8e4c88d00b6eb46229a1ed7001451320", // vmsrc
+  "39111508bfde89ce6e0fe6abe0365552", // vnetd
+  "dbca28ad420408850a94d5c325183b28", // if-up
+  "0a4fa52803a389311a9ddc49b7b19138", // viocli
+  "82bf31e7d768e6d4d3bc7c8c8ef2b358", // vts
+  "18f895e24fe1181bb559215ff9cf6ce3", // vmckd
+  "a52e36a70b5e0307cbcaa5fd7c97882c", // sample 7
+  "a02469742f7b0bc9a8ab5e26822b3fa8"  // sample 8
+]);
+let sha1_iocs = dynamic([
+  "9bf4c786ebd68c0181cfe3eb85d2fd202ed12c54",
+  "f639d9404c03af86ce452db5c5e0c528b81dc0d7",
+  "fb11c6caa4ea844942fe97f46d7eb42bc76911ab",
+  "97001baaa379bcd83677dca7bc5b8048fdfaaddc",
+  "de28546ec356c566cd8bca205101a733e9a4a22d",
+  "c3549d4e5e39a11f609fc6fbf5cc1f2c0ec272b4",
+  "44a3d3f15ef75d9294345462e1b82272b0d11985",
+  "10d811029f6e5f58cd06143d6353d3b05bc06d0f"
+]);
+let sha256_iocs = dynamic([
+  "aaf5569c8e349c15028bc3fac09eb982efb06eabac955b705a6d447263658e38",
+  "013211c56caaa697914b5b5871e4998d0298902e336e373ebb27b7db30917eaf",
+  "57bd98dbb5a00e54f07ffacda1fea91451a0c0b532cd7d570e98ce2ff741c21d",
+  "b3b6a992540da96375e4781afd3052118ad97cfe60ccf004d732f76678f6820a",
+  "22c15a32b69116a46eb5d0f2b228cc37cd1b5915a91ec8f38df79d3eed1da26b",
+  "f7cda90174b806a34381d5043e89b23ba826abcc89f7abd520060a64475ed506",
+  "39b3d8a8aedffc1b40820f205f6a4dc041cd37262880e5030b008175c45b0c46",
+  "73fe8b8fb4bd7776362fd356fdc189c93cf5d9f6724f6237d829024c10263fe5"
+]);
+// Process creations with matching hashes
+let proc_hits = 
+    DeviceProcessEvents
+    | where Timestamp > ago(lookback)
+    | where MD5 in (md5_iocs) or SHA1 in (sha1_iocs) or SHA256 in (sha256_iocs)
+    | project Timestamp, DeviceName, FileName, FolderPath, MD5, SHA1, SHA256, ProcessCommandLine, AccountName
+    | summarize proc_last_seen=max(Timestamp), proc_hits=count() by DeviceName;
+// File events (create/modify/read) with matching hashes
+let file_hits = 
+    DeviceFileEvents
+    | where Timestamp > ago(lookback)
+    | where MD5 in (md5_iocs) or SHA1 in (sha1_iocs) or SHA256 in (sha256_iocs)
+    | project Timestamp, DeviceName, FileName, FolderPath, ActionType, MD5, SHA1, SHA256, InitiatingProcessFileName, InitiatingProcessCommandLine
+    | summarize file_last_seen=max(Timestamp), file_hits=count() by DeviceName;
+// Image load events (if available) with matching hashes
+let image_hits =
+    DeviceImageLoadEvents
+    | where Timestamp > ago(lookback)
+    | where MD5 in (md5_iocs) or SHA1 in (sha1_iocs) or SHA256 in (sha256_iocs)
+    | project Timestamp, DeviceName, FileName, FolderPath, MD5, SHA1, SHA256, InitiatingProcessFileName
+    | summarize img_last_seen=max(Timestamp), img_hits=count() by DeviceName;
+// Consolidated results
+proc_hits
+| join kind=fullouter file_hits on DeviceName
+| join kind=fullouter image_hits on DeviceName
+| project 
+    DeviceName = coalesce(DeviceName, DeviceName1, DeviceName2),
+    proc_last_seen, proc_hits,
+    file_last_seen, file_hits,
+    img_last_seen, img_hits
