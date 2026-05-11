@@ -1,0 +1,14 @@
+let DeviceAccessIOCDomain =
+DeviceFileEvents
+| where TimeGenerated > (90d)
+| where ActionType == "FileCreated"
+| where FileName contains "zip" or FileName contains "pdf"
+| distinct DeviceName;
+let DevicewithScheduledTask =
+DeviceEvents
+| where ActionType == "ScheduledTaskCreated"
+| where DeviceName has_any(DeviceAccessIOCDomain)
+| distinct DeviceName;
+DeviceNetworkEvents
+| where RemoteIP == "*"
+| where DeviceName has_any(DevicewithScheduledTask)
