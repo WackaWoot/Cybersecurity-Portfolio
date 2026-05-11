@@ -1,0 +1,20 @@
+// The First query allows you to search for emails between two known users (sender and recipient) between a certain datetime range
+
+// The Second query allows you to do the same as the first query without known sender address
+
+let recipient_email = "@domain.com"; // <---- insert email address here
+let sender_email = "";  // <------ insert sender email address here, if N/A, see second query
+EmailEvents
+| where RecipientEmailAddress contains recipient_email 
+| where Timestamp between (datetime(2025-09-01) .. datetime(2025-10-31) ) //<----- insert datetime range here, (first being startdate, second being enddate
+| where SenderFromAddress contains sender_email
+| order by Timestamp asc
+| summarize by TimeGenerated, SenderDisplayName, SenderFromDomain, Subject, tostring(To), tostring(Cc), AttachmentCount, UrlCount
+
+
+let recipient_email = "user@domain.com"; // <---- insert email address here 
+EmailEvents
+| where RecipientEmailAddress contains recipient_email 
+| where Timestamp between (datetime(2026-02-20) .. datetime(2026-02-21) ) //<----- insert datetime range here
+| order by Timestamp asc
+| summarize by TimeGenerated, SenderDisplayName, SenderFromAddress, RecipientEmailAddress, SenderFromDomain, Subject, tostring(To), tostring(Cc), AttachmentCount, UrlCount
