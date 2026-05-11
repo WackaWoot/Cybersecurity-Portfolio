@@ -1,0 +1,12 @@
+//Rule Out Local Automation- sending emails. Look for add-in hosts (VSTOInstaller, AddinProcess, unusual DLL loads) powershell.exe or wscript.exe spawning Outlook scripting engines
+
+let device = "machine.domain.com";
+let t0 = datetime(2026-04-02 18:35:30Z);
+let t1 = datetime(2026-04-02 18:39:30Z);
+DeviceProcessEvents
+| where DeviceName =~ device
+| where Timestamp between (t0 .. t1)
+| project Timestamp, FileName, ProcessCommandLine,
+          InitiatingProcessFileName, InitiatingProcessCommandLine,
+          AccountUpn, LogonId
+| order by Timestamp asc
