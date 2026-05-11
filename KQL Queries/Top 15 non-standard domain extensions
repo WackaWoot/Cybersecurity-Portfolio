@@ -1,0 +1,72 @@
+//Horizontal bar chart version
+ 
+DeviceNetworkEvents
+| extend ParsedUrl = parse_url(RemoteUrl)
+| extend Domain = tostring(ParsedUrl["Host"])
+| where isnotempty(Domain)
+| where Domain !in ("googleapis.com", "in-addr.arpa")
+| extend Extension = strcat(".", tolower(extract(@"\.([a-z]{2,})$", 1, Domain)))
+| where isnotempty(Extension) and Extension != "."
+| where Extension !in (".com", ".net", ".org", ".gov", ".us")
+| summarize Count = count() by Extension
+| top 15 by Count desc
+| render barchart kind= stacked
+ 
+//Pie Chart Version
+ 
+DeviceNetworkEvents
+| where Timestamp > ago(24h)
+| extend ParsedUrl = parse_url(RemoteUrl)
+| extend Domain = tostring(ParsedUrl["Host"])
+| where isnotempty(Domain)
+| where Domain !in ("googleapis.com", "in-addr.arpa")
+| extend Extension = strcat(".", tolower(extract(@"\.([a-z]{2,})$", 1, Domain)))
+| where isnotempty(Extension) and Extension != "."
+| where Extension !in (".com", ".net", ".org", ".gov", ".us")
+| summarize Count = count() by Extension
+| top 15 by Count desc
+| render piechart
+ 
+ 
+//Top 15 Country code URL extenstions in the past 24hrs ( not that you asked but thought it would be useful)
+ 
+//Barchart Version:
+ 
+ 
+let CountryCodes = datatable(Extension:string, Country:string)
+[
+    "uk","United Kingdom","de","Germany","fr","France","jp","Japan","in","India","cn","China","ru","Russia","br","Brazil","au","Australia","ca","Canada","za","South Africa","it","Italy","es","Spain","nl","Netherlands","se","Sweden","ch","Switzerland","pl","Poland","mx","Mexico","kr","South Korea","ar","Argentina","be","Belgium","dk","Denmark","fi","Finland","no","Norway","pt","Portugal","gr","Greece","tr","Turkey","nz","New Zealand","sg","Singapore","hk","Hong Kong","ie","Ireland","il","Israel","sa","Saudi Arabia","ae","United Arab Emirates","th","Thailand","my","Malaysia","id","Indonesia","ph","Philippines","ro","Romania","cz","Czech Republic","hu","Hungary","bg","Bulgaria","sk","Slovakia","si","Slovenia","hr","Croatia","lt","Lithuania","lv","Latvia","ee","Estonia","ua","Ukraine","vn","Vietnam","cl","Chile","co","Colombia","pe","Peru","pk","Pakistan","bd","Bangladesh","eg","Egypt","ng","Nigeria","ke","Kenya","ma","Morocco","dz","Algeria","tn","Tunisia","gh","Ghana","et","Ethiopia","zw","Zimbabwe","zm","Zambia","tz","Tanzania","ug","Uganda","rw","Rwanda","mu","Mauritius","bw","Botswana","na","Namibia","mz","Mozambique","ao","Angola","cv","Cape Verde","sn","Senegal","ml","Mali","ne","Niger","bf","Burkina Faso","bj","Benin","tg","Togo","gm","Gambia","sl","Sierra Leone","lr","Liberia","mr","Mauritania","sd","Sudan","ss","South Sudan","cd","DR Congo","cg","Congo","ga","Gabon","cm","Cameroon","bi","Burundi","so","Somalia","dj","Djibouti","er","Eritrea","mg","Madagascar","ls","Lesotho","sz","Eswatini","mw","Malawi","gn","Guinea","gw","Guinea-Bissau","ci","Ivory Coast","gq","Equatorial Guinea","st","São Tomé and Príncipe","sc","Seychelles"
+];
+DeviceNetworkEvents
+| where Timestamp > ago(24h)
+| extend ParsedUrl = parse_url(RemoteUrl)
+| extend Domain = tostring(ParsedUrl["Host"])
+| where isnotempty(Domain)
+| where Domain !in ("googleapis.com", "in-addr.arpa")
+| extend Extension = tolower(extract(@"\.([a-z]{2})$", 1, Domain))  // Only ccTLDs
+| where isnotempty(Extension) and Extension != "." and Extension != "us"  // Exclude U.S.
+| join kind=inner CountryCodes on Extension  // Inner join ensures only entries with a country name remain
+| summarize Count = count(), Domains = make_set(Domain, 100) by Extension, Country
+| top 15 by Count desc
+| render barchart kind=stacked
+ 
+ 
+ 
+//Pie Chart Version:
+ 
+let CountryCodes = datatable(Extension:string, Country:string)
+[
+    "uk","United Kingdom","de","Germany","fr","France","jp","Japan","in","India","cn","China","ru","Russia","br","Brazil","au","Australia","ca","Canada","za","South Africa","it","Italy","es","Spain","nl","Netherlands","se","Sweden","ch","Switzerland","pl","Poland","mx","Mexico","kr","South Korea","ar","Argentina","be","Belgium","dk","Denmark","fi","Finland","no","Norway","pt","Portugal","gr","Greece","tr","Turkey","nz","New Zealand","sg","Singapore","hk","Hong Kong","ie","Ireland","il","Israel","sa","Saudi Arabia","ae","United Arab Emirates","th","Thailand","my","Malaysia","id","Indonesia","ph","Philippines","ro","Romania","cz","Czech Republic","hu","Hungary","bg","Bulgaria","sk","Slovakia","si","Slovenia","hr","Croatia","lt","Lithuania","lv","Latvia","ee","Estonia","ua","Ukraine","vn","Vietnam","cl","Chile","co","Colombia","pe","Peru","pk","Pakistan","bd","Bangladesh","eg","Egypt","ng","Nigeria","ke","Kenya","ma","Morocco","dz","Algeria","tn","Tunisia","gh","Ghana","et","Ethiopia","zw","Zimbabwe","zm","Zambia","tz","Tanzania","ug","Uganda","rw","Rwanda","mu","Mauritius","bw","Botswana","na","Namibia","mz","Mozambique","ao","Angola","cv","Cape Verde","sn","Senegal","ml","Mali","ne","Niger","bf","Burkina Faso","bj","Benin","tg","Togo","gm","Gambia","sl","Sierra Leone","lr","Liberia","mr","Mauritania","sd","Sudan","ss","South Sudan","cd","DR Congo","cg","Congo","ga","Gabon","cm","Cameroon","bi","Burundi","so","Somalia","dj","Djibouti","er","Eritrea","mg","Madagascar","ls","Lesotho","sz","Eswatini","mw","Malawi","gn","Guinea","gw","Guinea-Bissau","ci","Ivory Coast","gq","Equatorial Guinea","st","São Tomé and Príncipe","sc","Seychelles"
+];
+DeviceNetworkEvents
+| where Timestamp > ago(24h)
+| extend ParsedUrl = parse_url(RemoteUrl)
+| extend Domain = tostring(ParsedUrl["Host"])
+| where isnotempty(Domain)
+| where Domain !in ("googleapis.com", "in-addr.arpa")
+| extend Extension = tolower(extract(@"\.([a-z]{2})$", 1, Domain))  // Only ccTLDs
+| where isnotempty(Extension) and Extension != "." and Extension != "us"  // Exclude U.S.
+| join kind=inner CountryCodes on Extension  // Inner join ensures only entries with a country name remain
+| summarize Count = count(), Domains = make_set(Domain, 100) by Extension, Country
+| top 15 by Count desc
+| render piechart
