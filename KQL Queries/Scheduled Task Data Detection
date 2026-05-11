@@ -1,0 +1,256 @@
+// Use the user variables to set what devices we are looking at the processes for, limit the scope based on time, and toggle filtering out if it was an operating system account that initiated the process
+let userDevice = pack_array("");
+let timeframe = ago(7d);
+let queryTime = ago(60d);
+let filterOutOSAccounts = true;
+let maxDeviceCount = 10;
+//
+// Filter for any action that has to do with a scheduled task on specified devices
+DeviceEvents
+| where TimeGenerated >= queryTime
+| where ActionType in~ ("ScheduledTaskCreated", "ScheduledTaskRegistered", "ScheduledTaskDeleted", "ScheduledTaskUpdated", "ScheduledTaskExecuted", "ScheduledTaskLaunched", "ScheduledTaskEnabled", "ScheduledTaskDisabled")
+| where filterOutOSAccounts == false or (filterOutOSAccounts == true and InitiatingProcessAccountSid != "S-1-5-18") // Filter out any initiating accounts that have an SID that is exactly S-1-5-18 as these are special accounts used by the operating system
+//
+| extend AdditionalFields = parse_json(AdditionalFields)
+| evaluate bag_unpack(AdditionalFields)
+//
+| extend TaskContent = parse_json(TaskContent)
+| evaluate bag_unpack(TaskContent, "Task_")
+//
+| extend Task_Actions = parse_json(Task_Actions)
+| evaluate bag_unpack(Task_Actions, "Action_")
+//
+| extend Task_Triggers = parse_json(Task_Triggers)
+| evaluate bag_unpack(Task_Triggers, "Trigger_")
+//
+| extend Action_Exec = parse_json(Action_Exec)
+| evaluate bag_unpack(Action_Exec, "Exec_")
+| extend TargetDevices = iif(DeviceName has_any(userDevice), DeviceName, "")
+| summarize TaskCount = count(), Devices = make_set(DeviceName), TargetDevices = make_set(TargetDevices), Accounts = make_set(InitiatingProcessAccountName), AccountSIDs = make_set(InitiatingProcessAccountSid), Executables = make_set(Exec_Command), StartTimes = make_set(TimeGenerated), ExeArgs = make_set(Exec_Arguments), MostRecentStart = max(TimeGenerated) by TaskName, ActionType
+| extend DeviceCount = array_length(Devices)
+| where DeviceCount <= maxDeviceCount
+//
+// Filter for commands that were enacted on the device being searched for
+| where Devices has_any(userDevice)
+| where MostRecentStart >= timeframe
+//
+| where
+    // Filtering out the Google Updater
+    (not(TaskName startswith @"\GoogleUser\GoogleUpdater\GoogleUpdaterTaskUser"
+        and ActionType == "ScheduledTaskCreated"
+        and Executables has_all('AppData\\Local\\Google\\GoogleUpdater', 'updater.exe')))
+    and (not(TaskName startswith @"\GoogleUser\GoogleUpdater\GoogleUpdaterTaskUser"
+        and ActionType == "ScheduledTaskDeleted"))
+    //
+    // Filtering out the Experience Helper for Chrome
+    and (not(Executables has_any("Google\\Chrome\\Application\\PlatformExperienceHelper\\platform_experience_helper.exe")
+        and (TaskName == @"\GoogleUserPEH\RunPlatformExperienceHelper_CheckEligible" or TaskName == @"\GoogleUserPEH\RunPlatformExperienceHelper_Metrics" or TaskName == @"\GoogleUserPEH\RunPlatformExperienceHelper_DeleteShortcut" or TaskName == @"\GoogleUserPEH\RunPlatformExperienceHelperOnUnlock" or TaskName == @"\GoogleUserPEH\RunPlatformExperienceHelper_FirstRun" or TaskName == @"\GoogleUserPEH\RunPlatformExperienceHelper")
+        and ActionType == "ScheduledTaskCreated"))
+    and (not((TaskName == @"\GoogleUserPEH\RunPlatformExperienceHelper_CheckEligible" or TaskName == @"\GoogleUserPEH\RunPlatformExperienceHelper_Metrics" or TaskName == @"\GoogleUserPEH\RunPlatformExperienceHelper_DeleteShortcut" or TaskName == @"\GoogleUserPEH\RunPlatformExperienceHelperOnUnlock" or TaskName == @"\GoogleUserPEH\RunPlatformExperienceHelper_FirstRun")
+        and ActionType == "ScheduledTaskDeleted"))
+    //
+    // Filtering out Zoom Updates
+    and (not((TaskName startswith @"\ZoomUpdateTaskUser-S-1-5-21" or TaskName startswith @"\ZoomUpdateTaskUser-S-1-12-1")
+        and ActionType == "ScheduledTaskCreated"
+        and Executables has_any('AppData\\Roaming\\Zoom\\bin\\Zoom.exe')))
+    and (not((TaskName startswith @"\ZoomUpdateTaskUser-S-1-5-21" or TaskName startswith @"\ZoomUpdateTaskUser-S-1-12-1")
+        and ActionType == "ScheduledTaskDeleted"))
+    and (not((TaskName startswith @"\ZoomUpdateTaskUser-S-1-5-21" or TaskName startswith @"\ZoomUpdateTaskUser-S-1-12-1")
+        and ActionType == "ScheduledTaskUpdated"
+        and Executables has_any ("bin\\Zoom.exe")))
+    //
+    // Filtering out OneDrive
+    and (not(TaskName startswith @"\OneDrive Standalone Update Task"
+        and ActionType == "ScheduledTaskCreated"
+        and Executables has_any("%localappdata%\\Microsoft\\OneDrive\\OneDriveStandaloneUpdater.exe")))
+    and (not(TaskName startswith @"\OneDrive Startup Task"
+        and ActionType == "ScheduledTaskCreated"
+        and Executables has_all("\\AppData\\Local\\Microsoft\\OneDrive\\", "\\OneDriveLauncher.exe")))
+    and (not(TaskName startswith @"\OneDrive Reporting Task"
+        and ActionType == "ScheduledTaskCreated"
+        and Executables has_any("%localappdata%\\Microsoft\\OneDrive\\OneDriveStandaloneUpdater.exe", "C:\\Program Files (x86)\\Microsoft OneDrive\\OneDriveStandaloneUpdater.exe", "C:\\Program Files\\Microsoft OneDrive\\OneDriveStandaloneUpdater.exe")))
+    and (not(TaskName startswith @"\OneDrive Startup Task"
+        and ActionType == "ScheduledTaskUpdated"
+        and Executables has_all("\\AppData\\Local\\Microsoft\\OneDrive\\", "\\OneDriveLauncher.exe")))
+    and (not(TaskName startswith @"\OneDrive Reporting Task"
+        and ActionType == "ScheduledTaskUpdated"
+        and Executables has_any("%localappdata%\\Microsoft\\OneDrive\\OneDriveStandaloneUpdater.exe")))
+    and (not(TaskName startswith @"\OneDrive Standalone Update Task"
+        and ActionType == "ScheduledTaskDeleted"))
+    //
+    // Filtering out Internet Explorer's Sync task
+    and (not(TaskName startswith @"\User_Feed_Synchronization-"
+        and ActionType == "ScheduledTaskUpdated"
+        and Executables has_any("C:\\WINDOWS\\system32\\msfeedssync.exe")))
+    //
+    // Filtering out w11-oms-vdi-01 processes for OMS
+    and (not(TaskName has_any("\\RAD Muni Incident Update - PROD new", "\\RAD Outage Counts - PROD new", "\\Avineonics AGOL new", "\\Avineonics AGOL new", "\\CH_DEVICE_LAT_LONG Refresh new", "\\EORS Outage Report new", "\\EORS Outage Report new", "\\RAD 511 DA - PROD new", "\\RAD ETR - PROD new", "\\RAD Muni Incident Update - PROD new", "\\RAD Outage Counts - PROD new", "\\UALBANY OUTAGE FILE FEED - PROD new", "\\UALBANY OUTAGE FILE FEED - PROD new")
+        and ActionType has_any("ScheduledTaskUpdated", "ScheduledTaskCreated")
+        and Executables has_any("cmd.exe")))
+    //
+    // Filtering out Adobe
+    and (not(TaskName ==  @"\Launch Adobe CCXProcess"
+        and ActionType == "ScheduledTaskUpdated"
+        and Executables has_any("C:\\Program Files\\Adobe\\Adobe Creative Cloud Experience\\CCXProcess.exe")))
+    //
+    // Filtering out Edge Updates
+    and (not(TaskName startswith  @"\MicrosoftEdgeUpdateTaskUserS-1-5-21"
+        and (ActionType == "ScheduledTaskUpdated" or ActionType == "ScheduledTaskCreated")
+        and Executables has_any("\\AppData\\Local\\Microsoft\\EdgeUpdate\\MicrosoftEdgeUpdate.exe")))
+    //
+    // Filtering out Mozilla Updates
+    and (not(TaskName startswith  @"\Mozilla\Firefox Background Update S-1-5-21"
+        and (ActionType == "ScheduledTaskUpdated" or ActionType == "ScheduledTaskCreated")
+        and Executables has_any("C:\\Program Files\\Mozilla Firefox\\firefox.exe")))
+    and (not(TaskName startswith  @"\Mozilla\Firefox Background Update S-1-5-21"
+        and ActionType == "ScheduledTaskDeleted"))
+    and (not(TaskName startswith  @"\Mozilla\Firefox Background Update S-1-5-21"
+        and (ActionType == "ScheduledTaskUpdated" or ActionType == "ScheduledTaskCreated")
+        and Executables has_any("\\AppData\\Local\\Mozilla Firefox\\firefox.exe")))
+    //
+    // Filtering out PowerToys
+    and (not(TaskName startswith  @"\PowerToys\Autorun for "
+        and ActionType == "ScheduledTaskCreated"
+        and Executables has_any("\\AppData\\Local\\PowerToys\\PowerToys.exe")))
+    and (not(TaskName startswith  @"\PowerToys\Autorun for "
+        and ActionType == "ScheduledTaskDeleted"))
+    //
+    // Filtering out ArcGIS
+    and (not(TaskName startswith  @"\ArcGIS Pro Indexing ("
+        and ActionType == "ScheduledTaskCreated"
+        and Executables has_any("C:\\Program Files\\ArcGIS\\Pro\\bin\\ArcGISIndexingServer.exe")))
+    and (not(TaskName startswith  @"\ArcGIS Pro Indexing ("
+        and ActionType == "ScheduledTaskDeleted"))
+//
+//
+| sort by DeviceCount desc, TaskCount desc, TaskName asc
+| project-reorder TargetDevices, Devices, DeviceCount, ActionType, TaskName, Executables, ExeArgs, TaskCount, Accounts, AccountSIDs
+
+
+// Use the user variables to set what devices we are looking at the processes for, limit the scope based on time, and toggle filtering out if it was an operating system account that initiated the process
+let user = "oneclick_auto";
+let timeframe = ago(7d);
+let queryTime = ago(60d);
+let filterOutOSAccounts = false;
+let maxDeviceCount = 10;
+//
+// Filter for any action that has to do with a scheduled task on specified devices
+DeviceEvents
+| where TimeGenerated >= queryTime
+| where ActionType in~ ("ScheduledTaskCreated", "ScheduledTaskRegistered", "ScheduledTaskDeleted", "ScheduledTaskUpdated", "ScheduledTaskExecuted", "ScheduledTaskLaunched", "ScheduledTaskEnabled", "ScheduledTaskDisabled")
+| where filterOutOSAccounts == false or (filterOutOSAccounts == true and InitiatingProcessAccountSid != "S-1-5-18") // Filter out any initiating accounts that have an SID that is exactly S-1-5-18 as these are special accounts used by the operating system
+//
+| extend AdditionalFields = parse_json(AdditionalFields)
+| evaluate bag_unpack(AdditionalFields)
+//
+| extend TaskContent = parse_json(TaskContent)
+| evaluate bag_unpack(TaskContent, "Task_")
+//
+| extend Task_Actions = parse_json(Task_Actions)
+| evaluate bag_unpack(Task_Actions, "Action_")
+//
+| extend Task_Triggers = parse_json(Task_Triggers)
+| evaluate bag_unpack(Task_Triggers, "Trigger_")
+//
+| extend Action_Exec = parse_json(Action_Exec)
+| evaluate bag_unpack(Action_Exec, "Exec_")
+// | extend TargetDevices = iif(DeviceName has_any(userDevice), DeviceName, "")
+| summarize TaskCount = count(), Devices = make_set(DeviceName), Accounts = make_set(InitiatingProcessAccountName), AccountSIDs = make_set(InitiatingProcessAccountSid), Executables = make_set(Exec_Command), StartTimes = make_set(TimeGenerated), ExeArgs = make_set(Exec_Arguments), MostRecentStart = max(TimeGenerated) by TaskName, ActionType
+| extend DeviceCount = array_length(Devices)
+| where DeviceCount <= maxDeviceCount
+//
+// Filter for commands that were enacted on the device being searched for
+| where Accounts has_any (user)
+| where MostRecentStart >= timeframe
+//
+| where
+    // Filtering out the Google Updater
+    (not(TaskName startswith @"\GoogleUser\GoogleUpdater\GoogleUpdaterTaskUser"
+        and ActionType == "ScheduledTaskCreated"
+        and Executables has_all('AppData\\Local\\Google\\GoogleUpdater', 'updater.exe')))
+    and (not(TaskName startswith @"\GoogleUser\GoogleUpdater\GoogleUpdaterTaskUser"
+        and ActionType == "ScheduledTaskDeleted"))
+    //
+    // Filtering out the Experience Helper for Chrome
+    and (not(Executables has_any("Google\\Chrome\\Application\\PlatformExperienceHelper\\platform_experience_helper.exe")
+        and (TaskName == @"\GoogleUserPEH\RunPlatformExperienceHelper_CheckEligible" or TaskName == @"\GoogleUserPEH\RunPlatformExperienceHelper_Metrics" or TaskName == @"\GoogleUserPEH\RunPlatformExperienceHelper_DeleteShortcut" or TaskName == @"\GoogleUserPEH\RunPlatformExperienceHelperOnUnlock" or TaskName == @"\GoogleUserPEH\RunPlatformExperienceHelper_FirstRun" or TaskName == @"\GoogleUserPEH\RunPlatformExperienceHelper")
+        and ActionType == "ScheduledTaskCreated"))
+    and (not((TaskName == @"\GoogleUserPEH\RunPlatformExperienceHelper_CheckEligible" or TaskName == @"\GoogleUserPEH\RunPlatformExperienceHelper_Metrics" or TaskName == @"\GoogleUserPEH\RunPlatformExperienceHelper_DeleteShortcut" or TaskName == @"\GoogleUserPEH\RunPlatformExperienceHelperOnUnlock" or TaskName == @"\GoogleUserPEH\RunPlatformExperienceHelper_FirstRun")
+        and ActionType == "ScheduledTaskDeleted"))
+    //
+    // Filtering out Zoom Updates
+    and (not((TaskName startswith @"\ZoomUpdateTaskUser-S-1-5-21" or TaskName startswith @"\ZoomUpdateTaskUser-S-1-12-1")
+        and ActionType == "ScheduledTaskCreated"
+        and Executables has_any('AppData\\Roaming\\Zoom\\bin\\Zoom.exe')))
+    and (not((TaskName startswith @"\ZoomUpdateTaskUser-S-1-5-21" or TaskName startswith @"\ZoomUpdateTaskUser-S-1-12-1")
+        and ActionType == "ScheduledTaskDeleted"))
+    and (not((TaskName startswith @"\ZoomUpdateTaskUser-S-1-5-21" or TaskName startswith @"\ZoomUpdateTaskUser-S-1-12-1")
+        and ActionType == "ScheduledTaskUpdated"
+        and Executables has_any ("bin\\Zoom.exe")))
+    //
+    // Filtering out OneDrive
+    and (not(TaskName startswith @"\OneDrive Standalone Update Task"
+        and ActionType == "ScheduledTaskCreated"
+        and Executables has_any("%localappdata%\\Microsoft\\OneDrive\\OneDriveStandaloneUpdater.exe")))
+    and (not(TaskName startswith @"\OneDrive Startup Task"
+        and ActionType == "ScheduledTaskCreated"
+        and Executables has_all("\\AppData\\Local\\Microsoft\\OneDrive\\", "\\OneDriveLauncher.exe")))
+    and (not(TaskName startswith @"\OneDrive Reporting Task"
+        and ActionType == "ScheduledTaskCreated"
+        and Executables has_any("%localappdata%\\Microsoft\\OneDrive\\OneDriveStandaloneUpdater.exe", "C:\\Program Files (x86)\\Microsoft OneDrive\\OneDriveStandaloneUpdater.exe", "C:\\Program Files\\Microsoft OneDrive\\OneDriveStandaloneUpdater.exe")))
+    and (not(TaskName startswith @"\OneDrive Startup Task"
+        and ActionType == "ScheduledTaskUpdated"
+        and Executables has_all("\\AppData\\Local\\Microsoft\\OneDrive\\", "\\OneDriveLauncher.exe")))
+    and (not(TaskName startswith @"\OneDrive Reporting Task"
+        and ActionType == "ScheduledTaskUpdated"
+        and Executables has_any("%localappdata%\\Microsoft\\OneDrive\\OneDriveStandaloneUpdater.exe")))
+    and (not(TaskName startswith @"\OneDrive Standalone Update Task"
+        and ActionType == "ScheduledTaskDeleted"))
+    //
+    // Filtering out Internet Explorer's Sync task
+    and (not(TaskName startswith @"\User_Feed_Synchronization-"
+        and ActionType == "ScheduledTaskUpdated"
+        and Executables has_any("C:\\WINDOWS\\system32\\msfeedssync.exe")))
+    //
+    // Filtering out w11-oms-vdi-01 processes for OMS
+    and (not(TaskName has_any("\\RAD Muni Incident Update - PROD new", "\\RAD Outage Counts - PROD new", "\\Avineonics AGOL new", "\\Avineonics AGOL new", "\\CH_DEVICE_LAT_LONG Refresh new", "\\EORS Outage Report new", "\\EORS Outage Report new", "\\RAD 511 DA - PROD new", "\\RAD ETR - PROD new", "\\RAD Muni Incident Update - PROD new", "\\RAD Outage Counts - PROD new", "\\UALBANY OUTAGE FILE FEED - PROD new", "\\UALBANY OUTAGE FILE FEED - PROD new")
+        and ActionType has_any("ScheduledTaskUpdated", "ScheduledTaskCreated")
+        and Executables has_any("cmd.exe")))
+    //
+    // Filtering out Adobe
+    and (not(TaskName ==  @"\Launch Adobe CCXProcess"
+        and ActionType == "ScheduledTaskUpdated"
+        and Executables has_any("C:\\Program Files\\Adobe\\Adobe Creative Cloud Experience\\CCXProcess.exe")))
+    //
+    // Filtering out Edge Updates
+    and (not(TaskName startswith  @"\MicrosoftEdgeUpdateTaskUserS-1-5-21"
+        and (ActionType == "ScheduledTaskUpdated" or ActionType == "ScheduledTaskCreated")
+        and Executables has_any("\\AppData\\Local\\Microsoft\\EdgeUpdate\\MicrosoftEdgeUpdate.exe")))
+    //
+    // Filtering out Mozilla Updates
+    and (not(TaskName startswith  @"\Mozilla\Firefox Background Update S-1-5-21"
+        and (ActionType == "ScheduledTaskUpdated" or ActionType == "ScheduledTaskCreated")
+        and Executables has_any("C:\\Program Files\\Mozilla Firefox\\firefox.exe")))
+    and (not(TaskName startswith  @"\Mozilla\Firefox Background Update S-1-5-21"
+        and ActionType == "ScheduledTaskDeleted"))
+    and (not(TaskName startswith  @"\Mozilla\Firefox Background Update S-1-5-21"
+        and (ActionType == "ScheduledTaskUpdated" or ActionType == "ScheduledTaskCreated")
+        and Executables has_any("\\AppData\\Local\\Mozilla Firefox\\firefox.exe")))
+    //
+    // Filtering out PowerToys
+    and (not(TaskName startswith  @"\PowerToys\Autorun for "
+        and ActionType == "ScheduledTaskCreated"
+        and Executables has_any("\\AppData\\Local\\PowerToys\\PowerToys.exe")))
+    and (not(TaskName startswith  @"\PowerToys\Autorun for "
+        and ActionType == "ScheduledTaskDeleted"))
+    //
+    // Filtering out ArcGIS
+    and (not(TaskName startswith  @"\ArcGIS Pro Indexing ("
+        and ActionType == "ScheduledTaskCreated"
+        and Executables has_any("C:\\Program Files\\ArcGIS\\Pro\\bin\\ArcGISIndexingServer.exe")))
+    and (not(TaskName startswith  @"\ArcGIS Pro Indexing ("
+        and ActionType == "ScheduledTaskDeleted"))
+//
+//
+| sort by DeviceCount desc, TaskCount desc, TaskName asc
+| project-reorder Devices, DeviceCount, ActionType, TaskName, Executables, ExeArgs, TaskCount, Accounts, AccountSIDs
