@@ -1,0 +1,9 @@
+let IPs = set_difference(split(replace(@"\[|\]", "",tolower(``` 
+(ENTER SOURCE IP ADDRESS HERE) 
+```)),'\r\n'),dynamic([""])); 
+ImpervaWAFCloud 
+| where SrcIpAddr has_any(IPs) and 
+DstPortNumber != 443 and DstPortNumber != 80 and DstPortNumber != "" and DstPortNumber != 0 
+| summarize Count = count(), PortsUsed = make_set(DstPortNumber) by SrcIpAddr, DvcAction, BrowserType, QueryString, DstDomainHostname, TimeGenerated, DstIpAddr, DstPortNumber, HttpStatusCode 
+| project-reorder TimeGenerated, QueryString, SrcIpAddr, DvcAction, DstIpAddr, DstDomainHostname, DstPortNumber, BrowserType, HttpStatusCode 
+| sort by TimeGenerated desc 
