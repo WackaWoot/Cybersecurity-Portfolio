@@ -1,0 +1,57 @@
+Detailed results (Downloads + executable-like extensions + creation/modification action types)
+
+DeviceFileEvents
+| where Timestamp >= ago(30d)
+| where FolderPath has @"\Users\"
+| where FolderPath has @"\Downloads\"
+| where FileName matches regex @"(?i)\.(exe|msi|bat|cmd|ps1)$"
+| where ActionType in ("FileCreated", "FileRenamed", "FileModified")
+| project Timestamp, DeviceName, AccountName, InitiatingProcessAccountName,
+          FileName, FolderPath, SHA1, SHA256, ActionType,
+          InitiatingProcessFileName, InitiatingProcessFolderPath
+| order by Timestamp desc
+
+
+Same thing, but parses the user profile folder from the Downloads path
+
+DeviceFileEvents
+| where Timestamp >= ago(30d)
+| where FolderPath matches regex @".*\\Users\\[^\\]+\\Downloads\\.*"
+| where FileName matches regex @"(?i)\.(exe|msi|bat|cmd|ps1)$"
+| where ActionType in ("FileCreated", "FileRenamed", "FileModified")
+| extend DownloadUser = extract(@"\\Users\\([^\\]+)\\Downloads\\", 1, FolderPath)
+| project Timestamp, DeviceName, DownloadUser, AccountName,
+          FileName, FolderPath, SHA1, SHA256, ActionType,
+          InitiatingProcessFileName, InitiatingProcessFolderPath
+| order by Timestamp desc
+
+
+Summary view (top devices/users doing executable downloads in Downloads)
+
+DeviceFileEvents
+| where Timestamp >= ago(30d)
+| where FolderPath matches regex @".*\\Users\\[^\\]+\\Downloads\\.*"
+| where FileName matches regex @"(?i)\.(exe|msi|bat|cmd|ps1)$"
+| where ActionType in ("FileCreated", "FileRenamed", "FileModified")
+| extend DownloadUser = extract(@"\\Users\\([^\\]+)\\Downloads\\", 1, FolderPath)
+| summarize
+    DownloadEvents = count(),
+    UniqueFiles = dcount(SHA256),
+    SampleFiles = make_set(FileName, 10)
+  by DeviceName, DownloadUser
+| order by DownloadEvents desc
+
+
+Downloads executable activity (with cache/temp noise excluded)
+DeviceFileEvents
+| where Timestamp >= ago(30d)
+| where FolderPath matches regex @".*\\Users\\[^\\]+\\Downloads\\.*"
+| where FileName matches regex @"(?i)\.(exe|msi|bat|cmd|ps1)$"
+| where ActionType in ("FileCreated", "FileRenamed", "FileModified")
+| where FolderPath !has @"\AppData\Local\Temp\"
+| where FolderPath !has @"\AppData\Local\Microsoft\Windows\INetCache\"
+| extend DownloadUser = extract(@"\\Users\\([^\\]+)\\Downloads\\", 1, FolderPath)
+| project Timestamp, DeviceName, DownloadUser, AccountName,
+          FileName, FolderPath, SHA1, SHA256, ActionType,
+          InitiatingProcessFileName, InitiatingProcessFolderPath
+| order by Timestamp desc
