@@ -1,0 +1,20 @@
+// Enter the desired port number
+let PortToMatch = 5555;
+union withsource = TableName //Joins DeviceNetworkEvents and CommonSecurityLog tables
+    DeviceNetworkEvents,
+    CommonSecurityLog
+| extend RemotePort = coalesce(RemotePort_int, toint(RemotePort_string)) //Joins RemotePort_int and RemotePort_string to a single value named RemotePort
+| extend SrcPort     = coalesce(LocalPort, (SourcePort)) //Joins LocalPort and SourcePort to a single value named SrcPort
+| where RemotePort == PortToMatch or SrcPort == PortToMatch //Uses the port defined to search both RemotePort and SrcPort for matches
+| project
+    TableName,
+    TimeGenerated,
+    DeviceName,
+    LocalIP,
+    RemotePort,
+    SrcPort,
+    LocalPort,
+    DestinationPort,
+    Protocol,
+    InitiatingProcessFileName
+// | summarize Count = count() by DeviceName, TableName
