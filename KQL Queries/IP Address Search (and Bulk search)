@@ -1,0 +1,40 @@
+//Bulk Search
+let IPs = dynamic(["x.x.x.x","x.x.x.x","x.x.x.x","x.x.x.x","x.x.x.x"]);
+let DNE =
+DeviceNetworkEvents
+| project
+    TableName = "DeviceNetworkEvents",
+    TimeGenerated,
+    DeviceName,
+    SrcIP = LocalIP,
+    DstIP = RemoteIP,
+    LocalPort,
+    DestinationPort = RemotePort,
+    Protocol,
+    InitiatingProcessFileName;
+let CSL =
+CommonSecurityLog
+| project
+    TableName = "CommonSecurityLog",
+    TimeGenerated,
+    DeviceName = coalesce(DeviceName, Computer),
+    DeviceAction = DeviceAction,
+    SrcIP = SourceIP,
+    DstIP = DestinationIP,
+    LocalPort = SourcePort,
+    DestinationPort = DestinationPort,
+    Protocol,
+    InitiatingProcessFileName = tostring(ProcessName);
+union DNE, CSL
+| where SrcIP in (IPs) or DstIP in (IPs)
+//| where tolower(DeviceAction) != "drop"
+| project TableName, TimeGenerated, DeviceAction, DeviceName, SrcIP, DstIP, LocalPort, DestinationPort, Protocol, InitiatingProcessFileName
+//| summarize EventCount = count() by SrcIP
+| order by TimeGenerated desc
+
+//Single source IP Search
+
+union withsource = TableName DeviceNetworkEvents, CommonSecurityLog //Searches DeviceNetworkEvents and CommonSecurityLog for desired IP Address connections
+| where RemoteIP == "8.8.8.8" //Input IP Address
+| project TableName, TimeGenerated, DeviceName, LocalIP, RemoteIP, LocalPort, DestinationPort, Protocol, InitiatingProcessFileName
+// | summarize Count = count() by DeviceName, TableName
