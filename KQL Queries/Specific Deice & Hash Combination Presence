@@ -1,0 +1,17 @@
+// Parameters
+let deviceName = "DEVICE-NAME-HERE";
+let hash = "Hash";              // e.g., MD5 (32), SHA1 (40), or SHA256 (64)
+let lookback = 30d;
+
+DeviceNetworkEvents
+| where Timestamp >= ago(lookback)
+| where DeviceName == deviceName
+// Match the hash against known process hash fields
+| where InitiatingProcessMD5 == hash
+    or InitiatingProcessSHA1 == hash
+    or InitiatingProcessSHA256 == hash
+| project Timestamp, DeviceName, ActionType,
+          InitiatingProcessFileName, InitiatingProcessFolderPath, InitiatingProcessId,
+          InitiatingProcessMD5, InitiatingProcessSHA1, InitiatingProcessSHA256,
+          RemoteUrl, RemoteIP, RemotePort, Protocol, LocalIP, LocalPort, ReportId
+| order by Timestamp asc
