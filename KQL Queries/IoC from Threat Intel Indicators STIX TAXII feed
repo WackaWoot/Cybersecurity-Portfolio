@@ -1,0 +1,162 @@
+// Load IoCs that are ingested into Sentinel and search for them in the environment
+//
+let tf = ago(30d); //timeframe
+// 
+// Load IoCs with a certain tag from what is loaded into Defender/Sentinel
+let indicators = ThreatIntelIndicators
+// Search for currently valid, active IoCs, then take the newest instance of the IoC (when a change is made, a new record is created, so taking the newest means using the most current info)
+| where ValidUntil > now() and IsActive == "true"
+| summarize arg_max(TimeGenerated, *) by ObservableValue, Id
+// Search for a specific tag; possible use-case in the future is to tag something "Iran" or "C2" so then we can filter for IoCs specific to that
+| where Tags contains "Regulatory"
+| distinct ObservableValue, ObservableKey; //the IoC, and the IoC type
+//
+//
+//
+// Pull just the IPv4 IoCs and store them
+let IPiocs = toscalar(indicators
+| where ObservableKey startswith "ipv4"
+| summarize make_set(ObservableValue));
+//
+//
+//
+// Pull just the domain IoCs and store them
+let DOMAINiocs = toscalar(indicators
+| where ObservableKey startswith "domain-name"
+| summarize make_set(ObservableValue));
+//
+//
+//
+// Pull just the hash IoCs and store them
+let HASHiocs = toscalar(indicators
+| where ObservableKey startswith "file:hashes"
+| summarize make_set(ObservableValue));
+//
+//
+//
+// Search among a lot of tables for the IPv4 IoCs (query stolen from Shem's Broad IoC query and reformatted to show different information and add new info)
+// Tables it searches in: DeviceEvents,DeviceLogonEvents,DeviceNetworkEvents,AlertEvidence,BehaviorEntities,CommonSecurityLog
+let IPSearch = union (
+    union withsource=Table DeviceEvents,DeviceLogonEvents,DeviceNetworkEvents,AlertEvidence,BehaviorEntities
+    | where Timestamp >= tf
+    | where isnotnull(RemoteIP)
+    | where has_any_ipv4(RemoteIP,IPiocs)
+    | extend IOCValue = RemoteIP
+            , ActionType = ActionType
+            , User = AccountName
+            , TableName = "DeviceEvents/DeviceLogonEvents/DeviceNetworkEvents/AlertEvidence/BehaviorEntities"
+            , ColumnName = "RemoteIP"
+    ),(
+    union withsource=Table DeviceNetworkEvents
+    | where Timestamp >= tf
+    | where ActionType == 'DnsConnectionInspected'
+        and isnotnull(AdditionalFields)
+        and has_any_ipv4(AdditionalFields,IPiocs)
+    | extend Add = parse_json(AdditionalFields)
+    | evaluate bag_unpack(Add)
+    | extend answers = column_ifexists('answers',''), query = column_ifexists('query','')
+    | where isnotempty(answers)
+    | extend Answer = parse_json(answers)
+    | mv-expand Answer
+    | where has_any_ipv4(Answer, IPiocs)
+    | extend IOCValue = tostring(Answer)
+            , ActionType = ActionType
+            , User = InitiatingProcessAccountName
+            , TableName = "DeviceNetworkEvents"
+            , ColumnName = "AdditionalFields"
+    ),(
+    union withsource=Table CommonSecurityLog
+    | where TimeGenerated >= tf
+    | where SourceIP in (IPiocs)
+    | extend IOCValue = SourceIP
+            , ActionType = DeviceAction
+            , Timestamp = TimeGenerated
+            , User = SourceUserName
+            , TableName = "CommonSecurityLog"
+            , ColumnName = "SourceIP"
+    )
+    | project Timestamp, DeviceName, Table, ActionType, IPAddr=IOCValue, User, TableName, ColumnName
+    | summarize MostRecentTime = max(Timestamp), Count = count(), Devices = make_set(DeviceName), Actions = make_set(ActionType), Users = make_set(User), Tables = make_set(TableName), Columns = make_set(ColumnName) by IoC = IPAddr
+    | sort by MostRecentTime desc;
+//
+//
+//
+// Search Umbrella for domain hits
+let DomainSearch = union (
+    union withsource=Table Cisco_Umbrella_dns_CL
+    | where Timestamp_t >= tf
+    | extend RootDomain = trim_end(".", Domain_s)
+    | where RootDomain has_any (DOMAINiocs)
+    | extend Identities = parse_json(Identities_s)
+    | mv-expand Identities
+    | extend IOCValue = tostring(RootDomain)
+            , ActionType = Action_s
+            , Timestamp = Timestamp_t
+            , User = tostring(Identities)
+            , TableName = "Cisco_Umbrella_dns_CL"
+            , ColumnName = "RootDomain"
+    ),(
+    union withsource=Table DeviceNetworkEvents
+    | where Timestamp >= tf
+    | where RemoteUrl != "" and RemoteUrl has_any (DOMAINiocs)
+    | extend IOCValue = tostring(RemoteUrl)
+            , ActionType = ActionType
+            , User = InitiatingProcessAccountName
+            , TableName = "DeviceNetworkEvents"
+            , ColumnName = "RemoteUrl"
+    ),(
+    union withsource=Table CommonSecurityLog
+    | where TimeGenerated >= tf
+    | where RequestURL != "" and RequestURL has_any (DOMAINiocs)
+    | extend IOCValue = RequestURL
+            , ActionType = DeviceAction
+            , Timestamp = TimeGenerated
+            , User = SourceUserName
+            , TableName = "CommonSecurityLog"
+            , ColumnName = "RequestURL"
+    )
+    | project Timestamp, DeviceName, Table, ActionType, IOCValue, User, TableName, ColumnName
+    | summarize MostRecentTime = max(Timestamp), Count = count(), Devices = make_set(DeviceName), Actions = make_set(ActionType), Users = make_set(User), Tables = make_set(TableName), Columns = make_set(ColumnName) by IoC = IOCValue
+    | sort by MostRecentTime desc;
+//
+//
+//
+// Search CommonSecurityLog and DeviceFileEvents for file hashes
+let HashSearch = union
+(
+    CommonSecurityLog //Checks for hash value matches in the CommonSecurityLog table
+    | where TimeGenerated >= tf
+    | where FileHash in (HASHiocs)
+    | project Timestamp = TimeGenerated
+            , DeviceName
+            , ActionType = DeviceAction
+            , FileName
+            , FileHash
+            , SourceIP
+            , DestinationIP
+            , User = SourceUserName
+            , TableName = "CommonSecurityLog"
+            , ColumnName = "FileHash"
+),
+(
+    DeviceFileEvents //Checks for hash value matches in the DeviceFileEvents table
+    | where Timestamp >= tf
+    | where SHA256 in (HASHiocs) or SHA1 in (HASHiocs) or MD5 in (HASHiocs)
+    | project Timestamp
+            , DeviceName
+            , FileName
+            , FileHash = array_strcat(pack_array(SHA256, SHA1, MD5), ", ")
+            , SourceIP = FileOriginIP
+            , User = InitiatingProcessAccountName
+            , TableName = "DeviceFileEvents"
+            , ColumnName = "SHA256 / SHA1 / MD5"
+)
+| summarize MostRecentTime = max(Timestamp), Count = count(), Devices = make_set(DeviceName), Actions = make_set(ActionType), Users = make_set(User), Tables = make_set(TableName), Columns = make_set(ColumnName) by IoC = FileHash
+| sort by MostRecentTime desc;
+//
+//
+//
+// Combine all the tables to see all IoC information
+IPSearch
+| union DomainSearch, HashSearch
+| project-reorder IoC, MostRecentTime, Count, Actions, Devices, Users
