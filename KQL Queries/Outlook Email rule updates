@@ -1,0 +1,19 @@
+// Searching for changes to email rules
+// Initializing user, timeframe, and the operation being investigated (New-InboxRule, UpdatedInboxRules, etc; leaving blank will display 4 hardcoded types shown in the code)
+let user = "";
+let timeframe = ago(7d);
+let specificOperation = ""; //"New-InboxRule","Set-InboxRule","UpdateInboxRules","Set-Mailbox"
+//
+// Search in OfficeActivity for the rules
+OfficeActivity
+| where TimeGenerated >= timeframe
+| where UserId contains user or OfficeObjectId contains user
+//
+// If no specific operation was provided in the user input, search for the 4 hardcoded operations
+| where iif(specificOperation == "", Operation in ("New-InboxRule", "Set-InboxRule", "UpdateInboxRules", "Set-Mailbox"), Operation in (specificOperation))
+//
+// Expand the json column that had information about the specific rule, such as name, action, etc
+| mv-expand params = todynamic(Parameters)
+| summarize param_bag = make_bag(bag_pack(tostring(params.Name), params.Value)) by TimeGenerated, UserId, Operation, UserType, ResultStatus, ResultReasonType, OfficeObjectId, ClientIP, ExternalAccess, Logon_Type
+| evaluate bag_unpack(param_bag)
+| sort by TimeGenerated desc
