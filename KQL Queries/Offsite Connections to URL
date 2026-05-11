@@ -1,0 +1,12 @@
+//Searches to see if any off-site devices that are connected to the internet and not connected via VPN access a specified URL 
+let ValidPublicIPs = DeviceInfo //best table for getting all public ips used by our devices
+    | where not(PublicIP startswith "X.X.X") //filter out any records from our company's IPs
+    | project PublicIP, DeviceId, DeviceName; //collects only the necessary data from DeviceInfo
+Cisco_Umbrella //Cisco_Umbrella table is still used when off-site good for DnsQueryName
+| join kind=inner ( //inner join merges both projected columns from DeviceInfo and its own table's columns
+    ValidPublicIPs //Alias assigned to DeviceInfo
+) on $left.SrcIpAddr == $right.PublicIP
+| where DvcAction == "Allowed" //make sure that only events for DnsQueries that have been Allowed are displayed.
+| where DnsQueryName contains "www.bing.com." //the URL in question that user should enter themselves.  <----------------------ENTER URL
+| sort by TimeGenerated desc //sorted so that the most recent query displays first
+| project-reorder TimeGenerated, DnsQueryName, Identities, DeviceName, DeviceId, SrcIpAddr, DvcAction //organizes the results
