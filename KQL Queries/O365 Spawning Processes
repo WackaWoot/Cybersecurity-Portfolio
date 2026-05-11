@@ -1,0 +1,76 @@
+
+DeviceProcessEvents
+| where tolower(InitiatingProcessFileName ) in ("winword.exe","excel.exe")
+| distinct FileName
+| order by FileName asc
+
+
+DeviceProcessEvents
+| where Timestamp > ago(30d)
+| where InitiatingProcessFileName in~ ("explorer.exe","outlook.exe","winword.exe","excel.exe","powerpnt.exe")
+| where FileName in~ ("wscript.exe","cscript.exe","powershell.exe","cmd.exe","mshta.exe","rundll32.exe","regsvr32.exe")
+| where ProcessCommandLine has_any (".js",".vbs",".ps1",".cmd",".bat",".hta",".dll",".zip",".7z",".rar")
+//
+// Filtering out Logitech processes that seem common from the last month, but leaving wiggle room for something that is potentially not Logitech despite the name
+| extend Type = iif((
+    FileName =~ "rundll32.exe"
+    and FolderPath has @"\Windows\System32\"
+    and ProcessCommandLine has "LogiLDA.dll,LogiFetch"
+    and InitiatingProcessFileName =~ "explorer.exe"
+    and ProcessIntegrityLevel =~ "Medium"
+    and ProcessTokenElevation has "TokenElevationTypeLimited"
+) or (
+    FileName =~ "rundll32.exe"
+    and ProcessCommandLine has "LogiLDA.dll,LogiFetch"
+    and (InitiatingProcessFileName !~ "explorer.exe"
+         or ProcessIntegrityLevel !~ "Medium"
+         or ProcessTokenElevation !has "TokenElevationTypeLimited")
+), "Logitech", "")
+//
+// Filter out common printer processes
+| extend Type = iif(FileName =~ "rundll32.exe"
+    and ProcessCommandLine contains @"\spool\DRIVERS\x64\3\hpmsn"
+    and ProcessCommandLine has_any ("MonitorPrintJobStatus", "CheckDevice")
+    and InitiatingProcessFileName in~ ("outlook.exe","winword.exe","powerpnt.exe")
+    and ProcessIntegrityLevel =~ "Medium"
+    and ProcessTokenElevation has "TokenElevationTypeLimited"
+, "Printer", Type)
+//
+// Filtering out Adobe Reader
+| extend Type = iif(FileName =~ "rundll32.exe"
+    and ProcessCommandLine has "AiodLite.dll"
+    and ProcessCommandLine has "CreateReaderUserSettings"
+    and FolderPath has @"\Windows\SysWOW64\"   // common for this pattern in your data
+    and ProcessIntegrityLevel =~ "Medium"
+    and ProcessTokenElevation has "TokenElevationTypeLimited"
+, "Adobe", Type)
+//
+// Filtering out control panel
+| extend Type = iif(FileName =~ "rundll32.exe"
+    and ProcessCommandLine has "shell32.dll,Control_RunDLL"
+    and ProcessCommandLine has ".cpl"
+    and ProcessIntegrityLevel =~ "Medium"
+    and ProcessTokenElevation has "TokenElevationTypeLimited"
+, "Control Panel", Type)
+//
+// Filtering out locking workstation
+| extend Type = iif(FileName =~ "rundll32.exe"
+    and ProcessCommandLine has "user32.dll,LockWorkStation"
+    and ProcessIntegrityLevel =~ "Medium"
+    and ProcessTokenElevation has "TokenElevationTypeLimited"
+, "Locking Workstation", Type)
+//
+// Leave this uncommented to filter out what has been identified
+| where Type !in (
+                "Locking Workstation",
+                "Control Panel",
+                "Adobe",
+                "Printers",
+                "Logitech"
+                )
+| order by Timestamp desc
+//
+// Comment out this next section if you want to see unsummarized logs
+| summarize count(), Devices = make_set(DeviceName), InitCommands = make_set(InitiatingProcessCommandLine) by ProcessCommandLine, FileName, InitiatingProcessFileName, Type
+| extend DeviceCount = array_length(Devices)
+| sort by DeviceCount desc, ProcessCommandLine asc
