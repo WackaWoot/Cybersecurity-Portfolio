@@ -1,0 +1,17 @@
+// Can be used for either SHA256 or MD5 if using MD5 just replace all SHA256 instances
+let hashes = datatable(SHA256:string) //add a comma between each has surrounded by quotation marks to create the array of hash values
+[
+    "[Insert Hash Values within quotes. Each one would require its own set of quotes and separated by commas]"
+];
+union isfuzzy=true
+(
+    CommonSecurityLog
+    | where FileHash in (hashes)              // uses the first column of hashbrown (SHA256)
+    | project TimeGenerated, DeviceName, FileName, FileHash, SourceIP, DestinationIP, EventType="CommonSecurityLog"
+),
+(
+    DeviceFileEvents
+    | where SHA256 in (hashbrown)
+    | project TimeGenerated=Timestamp, DeviceName, FileName, FileHash=SHA256, SourceIP="", DestinationIP="", EventType="DeviceFileEvents"
+)
+| sort by TimeGenerated desc
