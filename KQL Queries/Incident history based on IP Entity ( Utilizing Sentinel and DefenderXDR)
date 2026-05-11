@@ -1,0 +1,32 @@
+let inputIP = "8.8.8.8";  // <-- Replace with the IP address you want to search for
+let incidents = SecurityIncident
+| where Title contains "Incident Title" // Filter incidents by title
+| extend AlertIdsDynamic = todynamic(AlertIds) // Convert AlertIds to dynamic array
+| mv-expand AlertId = AlertIdsDynamic //Use mx-expand to expand array into individual alert IDs
+| extend AlertId = tostring(AlertId) // Convert alert ID to string
+| project TimeGenerated, IncidentNumber, AlertId, Comments; // Convert alert ID to string
+let alerts = SecurityAlert
+| where isnotempty(SystemAlertId)  // Ensure alert ID exists
+| extend SystemAlertId = tostring(SystemAlertId)  // Convert alert ID to string
+| extend EntitiesDynamic = todynamic(Entities) // Convert Entities to dynamic array
+| mv-expand Entity = EntitiesDynamic // Expand entity array
+| extend EntityType = tostring(Entity.Type), IPAddress = tostring(Entity.Address) // Extract type and IP
+| where EntityType == "ip" and IPAddress == inputIP; // Filter for matching IP
+incidents
+| join kind=inner (
+    alerts
+    | project SystemAlertId, IPAddress // Select alert ID and IP
+) on $left.AlertId == $right.SystemAlertId
+| extend CommentMessages = tostring(Comments) // Parse and extract comment details > Convert Comments to string
+| extend ParsedComments = parse_json(CommentMessages)  // Parse JSON comments
+| mv-expand ParsedComments // Expand comment array
+| extend Message = tostring(ParsedComments.message), Author = tostring(ParsedComments.author.name) // Extract message and author
+| summarize // Aggregate data per incident and IP with summarize
+    TimeStart = min(TimeGenerated), // Earliest time for incident
+    TimeEnd = max(TimeGenerated), // Latest update for incident
+    Comments = make_list(strcat("(", Author, "): ", Message), 100)  // Combine comments with author
+    by IncidentNumber, IPAddress
+| extend TimeRange = strcat(format_datetime(TimeStart, 'MM d, yyyy h:mm:ss tt'), " - ", format_datetime(TimeEnd, 'MM d, yyyy h:mm:ss tt')) //TimeRange (start - end) of incident updates
+| project TimeStart, TimeRange, IncidentNumber, IPAddress, Comments //includes TimeStart to be used for sorting. 
+| order by TimeStart asc
+| project-away TimeStart
