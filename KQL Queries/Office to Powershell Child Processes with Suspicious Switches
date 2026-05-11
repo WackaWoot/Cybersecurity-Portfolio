@@ -1,0 +1,9 @@
+let OfficeParents = dynamic(["winword.exe","excel.exe","powerpnt.exe","outlook.exe","onenote.exe"]);
+DeviceProcessEvents
+| where Timestamp > ago(30d)
+| where InitiatingProcessFileName in~ (OfficeParents)
+| where FileName in~ ("powershell.exe","pwsh.exe")
+| where ProcessCommandLine has_any ("-enc","-encodedcommand","FromBase64String","IEX","Invoke-Expression",
+                                   "ExecutionPolicy Bypass","-w hidden","-windowstyle hidden","DownloadString")
+| project Timestamp, DeviceName, AccountName, Parent=InitiatingProcessFileName, Child=FileName, ProcessCommandLine
+| order by Timestamp desc
