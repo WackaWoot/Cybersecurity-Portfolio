@@ -1,0 +1,64 @@
+// Displays a user who has downloaded over the minimum threshold of files or files that amount to a minimum size from Sharepoint/OneDrive
+// Initialize the user (or leave blank to search for any user), timeframe, minimum number of files downloaded, minimum file size cumulative downloaded, and if results should be sorted by file count
+let user = "";
+let timeframe = ago(7d);
+let fileTotalMin = 35;
+let totalFileSizeMin = 8;
+let sortByAttachmentCount = true;
+//
+// Searching OfficeActivity for downloaded files
+let office = OfficeActivity
+| where TimeGenerated >= timeframe
+| where UserId != "app@sharepoint" and UserId contains user
+| where OfficeWorkload == "SharePoint" and Operation == "FileDownloaded";
+//
+// Searching CLoudAppEvents for downloaded files and combining the results with the previous results from OfficeActivity
+CloudAppEvents
+| where Timestamp > timeframe
+| extend UserId = tostring(RawEventData["UserId"])
+| where UserId != "app@sharepoint" and UserId contains user
+| where Application in ("Microsoft SharePoint Online", "Microsoft OneDrive for Business")
+| where ActionType has_any ("Download", "FileDownloaded", "DownloadFile")
+| extend Site_Url = tostring(RawEventData["SiteUrl"])
+| extend ClientIP = tostring(RawEventData["ClientIP"])
+| extend SourceFileName = tostring(RawEventData["SourceFileName"])
+//
+// Combine with results from OfficeActivity
+| union office
+//
+// Displaying results by user and IP address; provides summary of how many files downlaoded, file names, the SharePoint sites accessed, number of SharePoint sites, and the minimum file size of all the files downlaoded
+// *Minimum file size as the OfficeActivity table does not provide file size, but CloudAppEvents does
+| summarize Files = array_sort_asc(make_set(SourceFileName)), SharePointUrls = array_sort_asc(make_set(Site_Url)), MinimumCombinedFileSizeGB = sum(tolong(RawEventData["FileSizeBytes"])) / 1073741824 by UserId, ClientIP, bin(TimeGenerated, 1d)
+| extend FileDownloadCount = array_length(Files)
+| extend SharepointSiteCount = array_length(SharePointUrls)
+//
+// Filtering for results that are either equal to or above the total file count minimum or results that are equal to or above the total file size count downloaded
+| where FileDownloadCount >= fileTotalMin or MinimumCombinedFileSizeGB >= totalFileSizeMin
+| sort by iif(sortByAttachmentCount, FileDownloadCount, MinimumCombinedFileSizeGB) desc, UserId asc // logic to sort by either the number of files, or sort by file size
+| project-reorder UserId, ClientIP, FileDownloadCount, Files, SharepointSiteCount
+
+// This query can search for any user (leave the user variable blank) or a specific user for outbound emails to external addresses
+// These emails have more than the set number of attachments within the set timeframe or set size minimum
+// Initialize the user (or leave blank to search for any user), timeframe, minimum number of files downloaded, minimum file size cumulative downloaded, and if results should be sorted by file count
+let user = "";
+let timeframe = ago(7d);
+let fileTotalMin = 20;
+let totalFileSizeMinGB = 2;
+let sortByAttachmentCount = true;
+//
+// Filtering EmailEvents based on the variables initialized and looking for outbound connections
+EmailEvents
+| where TimeGenerated >= timeframe
+| where EmailDirection == "Outbound"
+| where SenderFromAddress contains user
+//
+// Join the EmailAttachmentInfo table to enrich data with the attachment names and hashes
+| join kind=inner EmailAttachmentInfo on NetworkMessageId
+//
+// Displaying results by employee (sender), their IP address, the subject of the email, and how many emails were attached; creates lists for recipient addresses, file names, hashes, messageIDs, and calculates the total file size of all files
+| summarize RecipientAddresses = make_set(RecipientEmailAddress), AttachmentNames = make_list(FileName), SHA256s = make_set(SHA256), MessageIDs = make_set(NetworkMessageId), FileSizesCumulativeGB = sum(tolong(FileSize)) / 1073741824 by SenderAddress = tolower(SenderMailFromAddress), SenderIPv4, AttachmentCount, Subject
+//
+// Filtering for results that are either equal to or above the total file count minimum or results that are equal to or above the total file size count sent outbound
+| where FileSizesCumulativeGB >= totalFileSizeMinGB or AttachmentCount >= fileTotalMin
+| sort by iif(sortByAttachmentCount, AttachmentCount, FileSizesCumulativeGB) desc, SenderAddress asc, Subject asc // logic to sort by either the number of files, or sort by file size
+| project-reorder SenderAddress, SenderIPv4, FileSizesCumulativeGB, AttachmentCount
