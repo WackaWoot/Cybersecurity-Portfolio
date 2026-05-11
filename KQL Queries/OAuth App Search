@@ -1,0 +1,75 @@
+OAuthAppInfo
+| where AppName != ""
+
+
+OAuthAppInfo
+| extend Organization = iff(AppOwnerTenantId == "8a37c00e-a20b-444e-b73c-092d3f5f5b3a", "My-Business", "Other")
+| project AppName, AppStatus, PrivilegeLevel, AppOrigin, AppOwnerTenantId, Organization
+
+
+OAuthAppInfo
+| extend Organization = case(
+    AppOwnerTenantId == "8a37c00e-a20b-444e-b73c-092d3f5f5b3a", "My-Business",
+    AppOwnerTenantId == "f8cdef31-a31e-4b4a-93e4-5f571e91255a", "Microsoft First Party Applications",
+    "Other"
+)
+| project AppName, AppStatus, PrivilegeLevel, AppOrigin, AppOwnerTenantId, Organization
+
+
+OAuthAppInfo
+| extend Organization = case(
+    AppOwnerTenantId == "8a37c00e-a20b-444e-b73c-092d3f5f5b3a", "My-Business",
+    AppOwnerTenantId == "f8cdef31-a31e-4b4a-93e4-5f571e91255a", "Microsoft First Party Applications",
+    "Other"
+)
+| extend Domain = tostring(parse_json(VerifiedPublisher).displayName)
+| project AppName, AppStatus, PrivilegeLevel, AppOrigin, AppOwnerTenantId, OAuthAppId, Organization, Domain
+
+
+
+OAuthAppInfo
+| extend Organization = case(
+    AppOwnerTenantId == "8a37c00e-a20b-444e-b73c-092d3f5f5b3a", "My-Business",
+    AppOwnerTenantId == "f8cdef31-a31e-4b4a-93e4-5f571e91255a", "Microsoft First Party Applications",
+    "Other"
+)
+| extend Domain = tostring(parse_json(VerifiedPublisher).displayName)
+| where OAuthAppId == "<YourAppId>" or AppOwnerTenantId == "<YourAppTenantId>"
+| project AppName, AppStatus, PrivilegeLevel, AppOrigin, AppOwnerTenantId, OAuthAppId, Organization, Domain
+
+
+OAuthAppInfo
+| where TimeGenerated >= datetime(1970-01-01)  // Ensures all records are included
+| extend Organization = case(
+    AppOwnerTenantId == "8a37c00e-a20b-444e-b73c-092d3f5f5b3a", "My-Business",
+    AppOwnerTenantId == "f8cdef31-a31e-4b4a-93e4-5f571e91255a", "Microsoft First Party Applications",
+    "Other"
+)
+| extend Domain = tostring(parse_json(VerifiedPublisher).displayName)
+//| where OAuthAppId == "<YourAppId>" or AppOwnerTenantId == "<YourTenantId>"
+| project AppName, AppStatus, PrivilegeLevel, AppOrigin, AppOwnerTenantId, OAuthAppId, Organization, Domain
+
+
+
+OAuthAppInfo
+| where TimeGenerated >= datetime(1970-01-01)  // Include all time
+| extend Organization = case(
+    AppOwnerTenantId == "8a37c00e-a20b-444e-b73c-092d3f5f5b3a", "My-Business",
+    AppOwnerTenantId == "f8cdef31-a31e-4b4a-93e4-5f571e91255a", "Microsoft First Party Applications",
+    "Other"
+)
+| extend Domain = iff(isempty(tostring(parse_json(VerifiedPublisher).displayName)), "Unknown", tostring(parse_json(VerifiedPublisher).displayName))
+//| where OAuthAppId == "<YourAppId>" or AppOwnerTenantId == "<YourTenantId>" or true  // Remove or edit filters as needed
+| summarize count() by AppName, AppStatus, PrivilegeLevel, AppOrigin, AppOwnerTenantId, OAuthAppId, Organization, Domain
+
+
+OAuthAppInfo
+| where TimeGenerated >= datetime(1970-01-01)  // Include all time
+| extend Organization = case(
+    AppOwnerTenantId == "8a37c00e-a20b-444e-b73c-092d3f5f5b3a", "My-Business",
+    AppOwnerTenantId == "f8cdef31-a31e-4b4a-93e4-5f571e91255a", "Microsoft First Party Applications",
+    "Other"
+)
+| extend Domain = iff(isempty(tostring(parse_json(VerifiedPublisher).displayName)), "Unknown", tostring(parse_json(VerifiedPublisher).displayName))
+//| where OAuthAppId == "<YourAppId>" or AppOwnerTenantId == "<YourTenantId>" or true
+| summarize count() by OAuthAppId, AppName, AppStatus, PrivilegeLevel, AppOrigin, AppOwnerTenantId, Organization, Domain
