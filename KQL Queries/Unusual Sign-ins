@@ -1,0 +1,85 @@
+let timeframe = ago(60d);
+//
+// Search IdentityLogonEvents for the user signins within the timeframe specified
+let userLoginsILE = IdentityLogonEvents
+| where TimeGenerated >= timeframe
+| where DeviceName !contains "adfs" and DeviceName != "" and IPAddress !startswith "10." and IPAddress != "FirewallIP"
+| project TimeGenerated, ActionType, DeviceName, AccountName, IPAddress, LogonType;
+//
+// Store the IP addresses of the IdentityLogonEvents query
+let ipaddrs = userLoginsILE
+| project IPAddress;
+//
+// Cross reference the logins found in IdentityLogonEvents with SigninLogs and find any unique IPs in SigninLogs
+SigninLogs
+| where TimeGenerated >= timeframe
+| where IPAddress !in (ipaddrs) and IPAddress !startswith "10." and IPAddress != "FirewallIP" // filter out IP addresses that are already accounted for in IdentityLogonEvents so we do not have duplicate records
+| project TimeGenerated, ActionType = ResultSignature, LogonType = AppDisplayName, AccountName = UserPrincipalName, IPAddress, LocationDetails//, City, State, CountryRegion
+| union userLoginsILE
+| where AccountName != "" and IPAddress != ""
+| extend City = tostring(LocationDetails["city"]), State = tostring(LocationDetails["state"]), CountryRegion = tostring(LocationDetails["countryOrRegion"])
+| summarize FirstTime = min(TimeGenerated), LastTime = max(TimeGenerated), Actions = make_set(ActionType), Count = count(), Successes = countif(ActionType has_any ("Success", "LogonSuccess")), Failures = countif(ActionType has_any ("Failure", "LogonFailed")) by IPAddress, City, State, CountryRegion, LogonType, AccountName
+| where Actions has_any ("LogonSuccess", "SUCCESS")
+// | sort by AccountName asc, Count desc
+| sort by Successes asc, Failures asc
+
+
+
+let timeframe = ago(30d);
+//
+// Search IdentityLogonEvents for the user signins within the timeframe specified
+let userLoginsSL = SigninLogs
+| where TimeGenerated >= timeframe
+| extend DeviceName = DeviceDetail.displayName
+| where DeviceName !contains "adfs" and DeviceName != "" and IPAddress !startswith "10." and IPAddress != "FirewallIP"
+| project TimeGenerated, ActionType = ResultSignature, DeviceName, AccountName = UserPrincipalName, IPAddress, LogonType = AppDisplayName, LocationDetails;
+//
+// Store the IP addresses of the IdentityLogonEvents query
+let ipaddrs = userLoginsSL
+| project IPAddress;
+//
+// Cross reference the logins found in IdentityLogonEvents with SigninLogs and find any unique IPs in SigninLogs
+IdentityLogonEvents
+| where TimeGenerated >= timeframe
+| where IPAddress !in (ipaddrs) and IPAddress !startswith "10." and IPAddress != FirewallIP" // filter out IP addresses that are already accounted for in IdentityLogonEvents so we do not have duplicate records
+| project TimeGenerated, ActionType, LogonType, AccountName, IPAddress//, City, State, CountryRegion
+| union userLoginsSL
+| where AccountName != "" and IPAddress != ""
+| extend AccountName = replace_string(AccountName, "@domain.com", "")
+| extend City = tostring(LocationDetails["city"]), State = tostring(LocationDetails["state"]), CountryRegion = tostring(LocationDetails["countryOrRegion"])
+// | extend IPv4 = iif(IPAddress contains ".", IPAddress, "")
+| where ActionType has_any ("LogonSuccess", "SUCCESS")
+| summarize FirstTime = min(TimeGenerated), LastTime = max(TimeGenerated), Actions = make_set(ActionType), Count = count(), Accounts = make_set(AccountName) by IPAddress, City, State, CountryRegion
+// | evaluate ipv4_lookup(IpInfoIoLite, IPAddress, IpInfoIpLite_NetworkCidr)
+// | sort by AccountName asc, Count desc
+| project Accounts, Actions, Count, City, State, CountryRegion, IPAddress, FirstTime, LastTime
+| sort by CountryRegion asc, Count desc
+// | serialize
+
+
+
+
+
+let timeframe = ago(30d);
+//
+// Search IdentityLogonEvents for the user signins within the timeframe specified
+let userLoginsSL = SigninLogs
+| where TimeGenerated >= timeframe
+| extend DeviceName = DeviceDetail.displayName
+| where DeviceName !contains "adfs" and DeviceName != "" and IPAddress !startswith "10." and IPAddress != "FirewallIP"
+| project TimeGenerated, ActionType = ResultSignature, DeviceName, AccountName = UserPrincipalName, IPAddress, LogonType = AppDisplayName, LocationDetails;
+//
+// Store the IP addresses of the IdentityLogonEvents query
+let ipaddrs = userLoginsSL
+| project IPAddress;
+//
+// Cross reference the logins found in IdentityLogonEvents with SigninLogs and find any unique IPs in SigninLogs
+let allIPs = IdentityLogonEvents
+| where TimeGenerated >= timeframe
+| where IPAddress !in (ipaddrs) and IPAddress !startswith "10." and IPAddress != "FirewallIP" // filter out IP addresses that are already accounted for in IdentityLogonEvents so we do not have duplicate records
+| project TimeGenerated, ActionType, LogonType, AccountName, IPAddress//, City, State, CountryRegion
+| union userLoginsSL
+| distinct IPAddress
+| extend IPv4 = iif(IPAddress contains ".", IPAddress, "");
+allIPs
+| evaluate ipv4_lookup(IpInfoIoLite, IPv4, IpInfoIpLite_NetworkCidr)
