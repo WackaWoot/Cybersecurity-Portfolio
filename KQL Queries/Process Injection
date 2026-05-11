@@ -1,0 +1,29 @@
+// Code injection (process injection)
+let susAPIs = pack_array(
+    "CreateRemoteThread", 
+    "NtCreateThreadEx", 
+    "RtlCreateUserThread",
+    "QueueUserAPC", 
+    "NtQueueApcThread",
+    "VirtualAllocEx", 
+    "WriteProcessMemory", 
+    "SetThreadContext");
+DeviceEvents
+| where TimeGenerated > ago(30d)
+| where ActionType has_any (susAPIs)
+| project TimeGenerated, DeviceName, ActionType, InitiatingProcessAccountName, InitiatingProcessAccountDomain, InitiatingProcessId, InitiatingProcessParentFileName, InitiatingProcessFileName, InitiatingProcessCommandLine, FileName, FolderPath, ProcessId, AdditionalFields
+| sort by TimeGenerated desc
+
+
+// Thread execution hijacking (process injection)
+let susAPIs = pack_array(
+    "SuspendThread",
+    "GetThreadContext",
+    "SetThreadContext", 
+    "ResumeThread"
+);
+DeviceEvents
+| where TimeGenerated > ago(30d)
+| where ActionType has_any (susAPIs)
+| project TimeGenerated, DeviceName, ActionType, InitiatingProcessAccountName, InitiatingProcessAccountDomain, InitiatingProcessId, InitiatingProcessParentFileName, InitiatingProcessFileName, InitiatingProcessCommandLine, FileName, FolderPath, ProcessId, AdditionalFields
+| sort by TimeGenerated desc
