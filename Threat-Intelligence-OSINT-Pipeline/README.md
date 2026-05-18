@@ -138,7 +138,6 @@ Each intelligence item is delivered to the analyst channel as a structured adapt
 The pipeline aggregates from 46 curated RSS-based sources spanning the following categories:
 
 - Government and regulatory advisories
-- Information Sharing and Analysis Center (ISAC) feeds
 - Vendor security research and disclosure blogs
 - Threat intelligence aggregators
 - Vulnerability databases and tracking sources
