@@ -99,6 +99,7 @@ A dedicated CVE extraction branch evaluates each item for CVE identifier referen
 Each intelligence item is delivered to the analyst channel as a structured adaptive card with the following fields:
 
 ![OSINT Pipeline Output Card](./example%20OSINT%20Flow%20Output.png)
+
 *Sample analyst-facing adaptive card delivered to Microsoft Teams. Content shown is publicly available cybersecurity news used for illustration purposes.*
 
 
